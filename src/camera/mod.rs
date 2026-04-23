@@ -12,8 +12,8 @@ pub enum CameraProjection {
 
 pub struct Camera {
     projection: CameraProjection,
-    pub position: Vec3,
-    pub rotation: Quat,
+    position: Vec3,
+    rotation: Quat,
 
     view_matrix: Mat4,
     projection_matrix: Mat4,
@@ -75,9 +75,17 @@ impl Camera {
         self.recalculate_matrices();
     }
 
+    pub fn position(&self) -> Vec3 {
+        self.position
+    }
+
     pub fn set_position(&mut self, position: Vec3) {
         self.position = position;
         self.recalculate_matrices();
+    }
+
+    pub fn rotation(&self) -> Quat {
+        self.rotation
     }
 
     pub fn set_rotation(&mut self, rotation: Quat) {
@@ -89,7 +97,7 @@ impl Camera {
         self.view_projection_matrix
     }
 
-    pub fn recalculate_matrices(&mut self) {
+    fn recalculate_matrices(&mut self) {
         let transform = Mat4::from_translation(self.position) * Mat4::from_quat(self.rotation);
 
         self.view_matrix = transform.inverse();
