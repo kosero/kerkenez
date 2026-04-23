@@ -122,4 +122,3 @@ jobs:
 
       - name: Run tests
         run: cargo test --locked --workspace --all-targets --no-fail-fast
-

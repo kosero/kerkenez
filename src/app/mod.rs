@@ -51,14 +51,10 @@ impl ApplicationHandler for App {
             let y = rng.gen_range(-50.0..50.0);
             let z = rng.gen_range(0.0..100.0);
 
-            let r = rng.gen_range(0.0..1.0);
-            let g = rng.gen_range(0.0..1.0);
-            let b = rng.gen_range(0.0..1.0);
-
             instances.push(crate::mesh::Instance {
                 model_matrix: glam::Mat4::from_translation(glam::vec3(x, y, z))
                     * glam::Mat4::from_scale(glam::vec3(0.1, 0.1, 0.1)),
-                color: glam::vec3(r, g, b),
+                color: glam::Vec3::ZERO,
             });
         }
 

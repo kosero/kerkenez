@@ -2,12 +2,14 @@ pub mod buffer;
 pub mod context;
 pub mod pipeline;
 pub mod shader;
+pub mod texture;
 
 use glow::{Context, HasContext};
 use glutin::context::PossiblyCurrentContext;
 use glutin::prelude::GlSurface;
 use glutin::surface::{Surface, WindowSurface};
 use std::num::NonZeroU32;
+use texture::Texture;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 
@@ -20,7 +22,9 @@ pub struct RenderState {
     pub camera: crate::camera::Camera,
     _instance_buffer: glow::Buffer,
     vao: glow::VertexArray,
+
     pub instances: Vec<crate::mesh::Instance>,
+    texture: Texture,
 }
 
 impl RenderState {
@@ -28,7 +32,7 @@ impl RenderState {
         let (gl, gl_surface, gl_context, window) =
             context::init_context(event_loop, title, width, height);
 
-        let (program, instance_buffer, vao) = unsafe {
+        let (program, instance_buffer, vao, texture) = unsafe {
             let (vao, vbo, ebo) = buffer::setup_buffers(&gl);
             gl.bind_vertex_array(Some(vao));
 
@@ -44,7 +48,11 @@ impl RenderState {
             shader::create_shaders(&gl, program);
             gl.use_program(Some(program));
 
-            (program, instance_buffer, vao)
+            let texture = Texture::load(&gl, "images/kerkenez.png");
+            texture.bind(&gl, program);
+            texture.unbind(&gl);
+
+            (program, instance_buffer, vao, texture)
         };
 
         let mut camera = crate::camera::Camera::new_perspective(
@@ -66,7 +74,9 @@ impl RenderState {
             camera,
             _instance_buffer: instance_buffer,
             vao,
+
             instances,
+            texture,
         }
     }
 
@@ -99,6 +109,8 @@ impl RenderState {
                 .get_uniform_location(self.program, "u_ViewProjection");
             self.gl
                 .uniform_matrix_4_f32_slice(location.as_ref(), false, &vp.to_cols_array());
+
+            self.texture.bind(&self.gl, self.program);
 
             // Dispatch draw call
             self.gl.bind_vertex_array(Some(self.vao));

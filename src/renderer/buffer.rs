@@ -1,23 +1,22 @@
 use crate::mesh::Vertex;
 use glow::{Context, HasContext};
 
-// Common base 2D quad geometry
 pub const VERTICES: &[Vertex] = &[
     Vertex {
         position: [0.5, 0.5, 0.0],
-        color: [0.0, 0.0, 1.0],
+        tex_coords: [1.0, 1.0],
     }, // Top Right
     Vertex {
         position: [0.5, -0.5, 0.0],
-        color: [0.0, 0.0, 1.0],
+        tex_coords: [1.0, 0.0],
     }, // Bottom Right
     Vertex {
         position: [-0.5, -0.5, 0.0],
-        color: [0.0, 0.0, 1.0],
+        tex_coords: [0.0, 0.0],
     }, // Bottom Left
     Vertex {
         position: [-0.5, 0.5, 0.0],
-        color: [0.0, 0.0, 1.0],
+        tex_coords: [0.0, 1.0],
     }, // Top Left
 ];
 
