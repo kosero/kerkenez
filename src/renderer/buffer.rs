@@ -23,7 +23,7 @@ pub const VERTICES: &[Vertex] = &[
 
 pub const INDICES: &[u32] = &[0, 1, 3, 1, 2, 3];
 
-pub unsafe fn setup_buffers(gl: &Context) -> (glow::VertexArray, glow::Buffer, glow::Buffer) {
+pub fn setup_buffers(gl: &Context) -> (glow::VertexArray, glow::Buffer, glow::Buffer) {
     unsafe {
         let vao = gl.create_vertex_array().unwrap();
         gl.bind_vertex_array(Some(vao));
