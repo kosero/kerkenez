@@ -66,13 +66,32 @@ impl Camera {
         &self.projection
     }
 
-    pub fn set_projection(&mut self, projection: CameraProjection) {
-        self.projection_matrix = match &projection {
+    pub fn resize(&mut self, width: f32, height: f32) {
+        match &mut self.projection {
+            CameraProjection::Perspective(persp) => {
+                persp.aspect_ratio = width / height;
+            }
+            CameraProjection::Orthographic(ortho) => {
+                let half_height = (ortho.top - ortho.bottom).abs() / 2.0;
+                let aspect = width / height;
+                ortho.left = -aspect * half_height;
+                ortho.right = aspect * half_height;
+            }
+        }
+        self.update_projection();
+    }
+
+    fn update_projection(&mut self) {
+        self.projection_matrix = match &self.projection {
             CameraProjection::Orthographic(ortho) => ortho.projection_matrix(),
             CameraProjection::Perspective(persp) => persp.projection_matrix(),
         };
-        self.projection = projection;
         self.recalculate_matrices();
+    }
+
+    pub fn set_projection(&mut self, projection: CameraProjection) {
+        self.projection = projection;
+        self.update_projection();
     }
 
     pub fn position(&self) -> Vec3 {

@@ -4,6 +4,7 @@ pub mod pipeline;
 pub mod shader;
 
 use glow::{Context, HasContext};
+use std::num::NonZeroU32;
 use glutin::context::PossiblyCurrentContext;
 use glutin::prelude::GlSurface;
 use glutin::surface::{Surface, WindowSurface};
@@ -40,7 +41,7 @@ impl RenderState {
             45.0,
             (width as f32) / (height as f32),
             0.1,
-            0.0,
+            100.0,
         );
         camera.set_position(glam::vec3(0.0, 0.0, -2.0));
 
@@ -71,6 +72,20 @@ impl RenderState {
 
             self.gl_surface.swap_buffers(&self.gl_context).unwrap();
             self.window.request_redraw();
+        }
+    }
+
+    pub fn resize(&mut self, width: u32, height: u32) {
+        if width > 0 && height > 0 {
+            self.gl_surface.resize(
+                &self.gl_context,
+                NonZeroU32::new(width).unwrap(),
+                NonZeroU32::new(height).unwrap(),
+            );
+            unsafe {
+                self.gl.viewport(0, 0, width as i32, height as i32);
+            }
+            self.camera.resize(width as f32, height as f32);
         }
     }
 }

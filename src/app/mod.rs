@@ -43,12 +43,13 @@ impl ApplicationHandler for App {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-        let Some(state) = self.state.as_ref() else {
+        let Some(state) = self.state.as_mut() else {
             return;
         };
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::RedrawRequested => state.render(),
+            WindowEvent::Resized(size) => state.resize(size.width, size.height),
             _ => (),
         }
     }
