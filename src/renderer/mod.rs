@@ -4,10 +4,10 @@ pub mod pipeline;
 pub mod shader;
 
 use glow::{Context, HasContext};
-use std::num::NonZeroU32;
 use glutin::context::PossiblyCurrentContext;
 use glutin::prelude::GlSurface;
 use glutin::surface::{Surface, WindowSurface};
+use std::num::NonZeroU32;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 
@@ -18,6 +18,9 @@ pub struct RenderState {
     window: Window,
     program: glow::Program,
     pub camera: crate::camera::Camera,
+    _instance_buffer: glow::Buffer,
+    vao: glow::VertexArray,
+    pub instances: Vec<crate::mesh::Instance>,
 }
 
 impl RenderState {
@@ -25,25 +28,34 @@ impl RenderState {
         let (gl, gl_surface, gl_context, window) =
             context::init_context(event_loop, title, width, height);
 
-        let program = unsafe {
-            let (_vao, _vbo, _ebo) = buffer::setup_buffers(&gl);
+        let (program, instance_buffer, vao) = unsafe {
+            let (vao, vbo, ebo) = buffer::setup_buffers(&gl);
+            gl.bind_vertex_array(Some(vao));
+
+            gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
+            pipeline::setup_pipeline(&gl);
+
+            let instance_buffer = buffer::setup_instance_buffer(&gl);
+            pipeline::setup_instancing(&gl);
+
+            gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(ebo));
 
             let program = gl.create_program().unwrap();
             shader::create_shaders(&gl, program);
             gl.use_program(Some(program));
 
-            pipeline::setup_pipeline(&gl);
-
-            program
+            (program, instance_buffer, vao)
         };
 
         let mut camera = crate::camera::Camera::new_perspective(
             45.0,
             (width as f32) / (height as f32),
             0.1,
-            100.0,
+            1000.0,
         );
-        camera.set_position(glam::vec3(0.0, 0.0, -2.0));
+        camera.set_position(glam::vec3(0.0, 0.0, -10.0));
+
+        let instances = Vec::new();
 
         Self {
             gl,
@@ -52,6 +64,25 @@ impl RenderState {
             window,
             program,
             camera,
+            _instance_buffer: instance_buffer,
+            vao,
+            instances,
+        }
+    }
+
+    pub fn update_instances(&mut self, instances: &[crate::mesh::Instance]) {
+        self.instances.clear();
+        self.instances.extend_from_slice(instances);
+
+        unsafe {
+            self.gl
+                .bind_buffer(glow::ARRAY_BUFFER, Some(self._instance_buffer));
+            let slice = std::slice::from_raw_parts(
+                self.instances.as_ptr() as *const u8,
+                std::mem::size_of_val(&self.instances[..]),
+            );
+            self.gl
+                .buffer_data_u8_slice(glow::ARRAY_BUFFER, slice, glow::DYNAMIC_DRAW);
         }
     }
 
@@ -61,6 +92,7 @@ impl RenderState {
             self.gl
                 .clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
 
+            // Upload matrices
             let vp = self.camera.view_projection_matrix();
             let location = self
                 .gl
@@ -68,7 +100,13 @@ impl RenderState {
             self.gl
                 .uniform_matrix_4_f32_slice(location.as_ref(), false, &vp.to_cols_array());
 
-            pipeline::draw(&self.gl, buffer::INDICES.len() as i32);
+            // Dispatch draw call
+            self.gl.bind_vertex_array(Some(self.vao));
+            pipeline::draw_instanced(
+                &self.gl,
+                buffer::INDICES.len() as i32,
+                self.instances.len() as i32,
+            );
 
             self.gl_surface.swap_buffers(&self.gl_context).unwrap();
             self.window.request_redraw();
@@ -87,5 +125,9 @@ impl RenderState {
             }
             self.camera.resize(width as f32, height as f32);
         }
+    }
+
+    pub fn request_redraw(&self) {
+        self.window.request_redraw();
     }
 }

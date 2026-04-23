@@ -8,7 +8,6 @@ use glutin::{
 };
 use glutin_winit::{DisplayBuilder, GlWindow};
 use raw_window_handle::HasWindowHandle;
-use std::num::NonZeroU32;
 use winit::{dpi::LogicalSize, event_loop::ActiveEventLoop, window::Window};
 
 pub fn init_context(
@@ -46,6 +45,7 @@ pub fn init_context(
     let window = window.expect("Failed to create window");
     let raw_window_handle = window.window_handle().ok().map(|h| h.as_raw());
 
+    // OpenGL version and context configuration
     let gl_display = gl_config.display();
     let context_attributes = ContextAttributesBuilder::new()
         .with_context_api(ContextApi::OpenGl(Some(glutin::context::Version {
@@ -55,10 +55,12 @@ pub fn init_context(
         .build(raw_window_handle);
 
     let (gl, gl_surface, gl_context) = unsafe {
+        // Create OpenGL context
         let not_current = gl_display
             .create_context(&gl_config, &context_attributes)
             .expect("Failed to create OpenGL context");
 
+        // Create window surface rendering target
         let attrs = window
             .build_surface_attributes(Default::default())
             .expect("Failed to build surface attributes");
@@ -71,12 +73,15 @@ pub fn init_context(
             .make_current(&gl_surface)
             .expect("Failed to make context current");
 
+        // Initialize Glow bindings
         let gl = glow::Context::from_loader_function_cstr(|s| gl_display.get_proc_address(s));
 
+        // Disable V-Sync for uncapped framerate
         gl_surface
-            .set_swap_interval(&gl_context, SwapInterval::Wait(NonZeroU32::new(1).unwrap()))
+            .set_swap_interval(&gl_context, SwapInterval::DontWait)
             .ok();
 
+        // Enable depth testing
         gl.enable(glow::DEPTH_TEST);
         gl.depth_func(glow::LESS);
 

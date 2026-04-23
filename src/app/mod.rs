@@ -28,18 +28,42 @@ impl App {
 
     pub fn run(mut self) {
         let event_loop = EventLoop::new().expect("Failed to create event loop");
+        event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
         event_loop.run_app(&mut self).unwrap();
     }
 }
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        self.state = Some(RenderState::new(
+        let mut state = RenderState::new(
             event_loop,
             &self.config.title,
             self.config.width,
             self.config.height,
-        ));
+        );
+
+        // Generate 10k random instances
+        let mut instances = Vec::with_capacity(10_000);
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        for _ in 0..10_000 {
+            let x = rng.gen_range(-50.0..50.0);
+            let y = rng.gen_range(-50.0..50.0);
+            let z = rng.gen_range(0.0..100.0);
+
+            let r = rng.gen_range(0.0..1.0);
+            let g = rng.gen_range(0.0..1.0);
+            let b = rng.gen_range(0.0..1.0);
+
+            instances.push(crate::mesh::Instance {
+                model_matrix: glam::Mat4::from_translation(glam::vec3(x, y, z))
+                    * glam::Mat4::from_scale(glam::vec3(0.1, 0.1, 0.1)),
+                color: glam::vec3(r, g, b),
+            });
+        }
+
+        state.update_instances(&instances);
+        self.state = Some(state);
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
@@ -51,6 +75,12 @@ impl ApplicationHandler for App {
             WindowEvent::RedrawRequested => state.render(),
             WindowEvent::Resized(size) => state.resize(size.width, size.height),
             _ => (),
+        }
+    }
+
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        if let Some(state) = self.state.as_mut() {
+            state.request_redraw();
         }
     }
 }

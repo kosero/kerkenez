@@ -1,21 +1,22 @@
 use crate::mesh::Vertex;
 use glow::{Context, HasContext};
 
+// Common base 2D quad geometry
 pub const VERTICES: &[Vertex] = &[
     Vertex {
-        position: [0.5, 0.5],
+        position: [0.5, 0.5, 0.0],
         color: [0.0, 0.0, 1.0],
     }, // Top Right
     Vertex {
-        position: [0.5, -0.5],
+        position: [0.5, -0.5, 0.0],
         color: [0.0, 0.0, 1.0],
     }, // Bottom Right
     Vertex {
-        position: [-0.5, -0.5],
+        position: [-0.5, -0.5, 0.0],
         color: [0.0, 0.0, 1.0],
     }, // Bottom Left
     Vertex {
-        position: [-0.5, 0.5],
+        position: [-0.5, 0.5, 0.0],
         color: [0.0, 0.0, 1.0],
     }, // Top Left
 ];
@@ -46,5 +47,13 @@ pub unsafe fn setup_buffers(gl: &Context) -> (glow::VertexArray, glow::Buffer, g
         gl.buffer_data_u8_slice(glow::ELEMENT_ARRAY_BUFFER, indices_slice, glow::STATIC_DRAW);
 
         (vao, vbo, ebo)
+    }
+}
+
+pub fn setup_instance_buffer(gl: &Context) -> glow::Buffer {
+    unsafe {
+        let buffer = gl.create_buffer().unwrap();
+        gl.bind_buffer(glow::ARRAY_BUFFER, Some(buffer));
+        buffer
     }
 }
