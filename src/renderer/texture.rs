@@ -52,11 +52,7 @@ impl Texture {
             texture
         };
 
-        Self {
-            id,
-            width: width,
-            height: height,
-        }
+        Self { id, width, height }
     }
 
     pub fn bind(&self, gl: &Context, program: glow::NativeProgram) {
