@@ -4,7 +4,9 @@ layout (location = 1) in vec3 color;
 
 out vec3 v_color;
 
+uniform mat4 u_ViewProjection;
+
 void main() {
     v_color = color;
-    gl_Position = vec4(position, 0.0, 1.0);
+    gl_Position = u_ViewProjection * vec4(position, 0.0, 1.0);
 }
