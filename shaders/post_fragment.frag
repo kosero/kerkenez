@@ -14,6 +14,30 @@ uniform float u_Near;
 uniform float u_Far;
 uniform mat4 u_InverseVP;
 uniform vec2 u_Resolution;
+uniform vec3 u_CameraPos;
+
+// Lighting Structures
+struct DirectionalLight {
+    vec3 direction;
+    vec3 color;
+    float intensity;
+    bool enabled;
+};
+
+struct PointLight {
+    vec3 position;
+    vec3 color;
+    float intensity;
+    float radius;
+};
+
+uniform vec3 u_AmbientColor;
+uniform float u_AmbientIntensity;
+uniform DirectionalLight u_DirLight;
+
+#define MAX_POINT_LIGHTS 32
+uniform int u_PointLightsCount;
+uniform PointLight u_PointLights[MAX_POINT_LIGHTS];
 
 // Debug
 #ifndef DEBUG_MODE
@@ -55,7 +79,7 @@ vec3 WorldPosFromDepth(vec2 uv, float depth) {
     return wp.xyz / wp.w;
 }
 
-//  G-Buffer Normal Fetch (replaces depth-based reconstruction)
+//  G-Buffer Normal Fetch
 
 vec3 GetNormal(vec2 uv) {
     return normalize(texture(u_NormalTexture, uv).rgb);
@@ -116,7 +140,6 @@ void main() {
     float d = linearDepth / u_Far;
     FragColor = vec4(vec3(d), 1.0);
     #elif DEBUG_MODE == 2
-    // G-Buffer normal visualization (no more depth reconstruction needed)
     vec3 n = GetNormal(v_TexCoords) * 0.5 + 0.5;
     FragColor = vec4(n, 1.0);
     #elif DEBUG_MODE == 3
@@ -124,44 +147,99 @@ void main() {
     FragColor = vec4(vec3(ao), 1.0);
     #else
 
-    vec3 color = texture(u_ScreenTexture, v_TexCoords).rgb;
+    vec3 albedo = texture(u_ScreenTexture, v_TexCoords).rgb;
+    vec3 normal = GetNormal(v_TexCoords);
+    vec3 fragPos = WorldPosFromDepth(v_TexCoords, rawDepth);
+    vec3 viewDir = normalize(u_CameraPos - fragPos);
 
-    color *= u_Exposure;
+    // Hardcoded for now (could come from G-Buffer RT2 later)
+    float roughness = 0.5;
+    float shininess = 32.0;
+    float specularStrength = 0.2;
 
+    // SSAO
+    float ao_final = 1.0;
     if (u_SSAOEnabled) {
         float ao = texture(u_SSAOTexture, v_TexCoords).r;
-
         ao = clamp(ao, 0.0, 1.0);
-
         float mask = GetScreenEdgeFade(v_TexCoords);
-
-        float ao_final = 1.0 - ((1.0 - ao) * mask);
-
-        color *= ao_final;
+        ao_final = 1.0 - ((1.0 - ao) * mask);
     }
 
-    // 3. Fog
+    // 1. Ambient Lighting
+    vec3 ambient = u_AmbientColor * u_AmbientIntensity * albedo;
+
+    vec3 lighting = ambient;
+
+    // Background mask (don't light the sky/background)
+    if (rawDepth < 1.0) {
+        // 2. Directional Light
+        if (u_DirLight.enabled) {
+            vec3 lightDir = normalize(-u_DirLight.direction);
+            float diff = max(dot(normal, lightDir), 0.0);
+            vec3 diffuse = u_DirLight.color * u_DirLight.intensity * diff * albedo;
+            
+            vec3 halfwayDir = normalize(lightDir + viewDir);  
+            float spec = pow(max(dot(normal, halfwayDir), 0.0), shininess);
+            vec3 specular = u_DirLight.color * u_DirLight.intensity * spec * specularStrength;
+            
+            lighting += diffuse + specular;
+        }
+
+        // 3. Point Lights
+        for (int i = 0; i < u_PointLightsCount; i++) {
+            PointLight light = u_PointLights[i];
+            
+            vec3 lightDir = normalize(light.position - fragPos);
+            float distance = length(light.position - fragPos);
+            
+            // Attenuation (smooth step falloff)
+            float attenuation = clamp(1.0 - (distance * distance) / (light.radius * light.radius), 0.0, 1.0);
+            attenuation *= attenuation;
+            
+            if (attenuation > 0.0) {
+                float diff = max(dot(normal, lightDir), 0.0);
+                vec3 diffuse = light.color * light.intensity * diff * albedo * attenuation;
+                
+                vec3 halfwayDir = normalize(lightDir + viewDir);  
+                float spec = pow(max(dot(normal, halfwayDir), 0.0), shininess);
+                vec3 specular = light.color * light.intensity * spec * specularStrength * attenuation;
+                
+                lighting += diffuse + specular;
+            }
+        }
+    } else {
+        // Just show albedo for background
+        lighting = albedo;
+    }
+
+    // Apply SSAO to the final lighting (stylized/stronger effect)
+    lighting *= ao_final;
+
+    vec3 color = lighting * u_Exposure;
+
+    // 4. Fog
     if (u_FogEnabled) {
         color = ApplyFog(color, linearDepth);
     }
 
-    // 4. Tone Mapping
+    // 5. Tone Mapping
     if (u_ToneMappingEnabled) {
         color = ACESFilm(color);
     }
 
-    // 5. Color Grading
+    // 6. Color Grading
     color = ApplyColorGrading(color);
 
-    // 6. Vignette
+    // 7. Vignette
     if (u_VignetteEnabled) {
         color = ApplyVignette(color, v_TexCoords);
     }
 
-    // 7. Gamma Correction
+    // 8. Gamma Correction
     color = pow(max(color, vec3(0.0)), vec3(1.0 / 2.2));
 
-    // 8. Dithering
+    // 9. Dithering
     color = ApplyDithering(color, v_TexCoords);
 
     FragColor = vec4(color, 1.0);

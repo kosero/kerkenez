@@ -1,11 +1,13 @@
 pub mod buffer;
 pub mod context;
+pub mod light;
 pub mod material;
 pub mod pipeline;
 pub mod post_process;
 pub mod shader;
 pub mod texture;
 
+use self::light::SceneLights;
 use self::material::{Material, MaterialId};
 use crate::camera::Camera;
 use crate::mesh::{DrawCall, Instance, Mesh, MeshType};
@@ -198,7 +200,7 @@ impl RenderState {
         }
     }
 
-    pub fn render(&mut self, render_queue: &[DrawCall]) {
+    pub fn render(&mut self, render_queue: &[DrawCall], lights: &SceneLights) {
         let size = self.ctx.window.inner_size();
         if size.width > 0
             && size.height > 0
@@ -240,6 +242,8 @@ impl RenderState {
                 near,
                 far,
                 self.camera.view_projection_matrix().inverse(),
+                self.camera.position(),
+                lights,
             );
 
             self.ctx

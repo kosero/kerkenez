@@ -6,6 +6,7 @@ pub use crate::mesh::{
 };
 pub use crate::renderer::{
     RenderState,
+    light::{DirectionalLight, PointLight, SceneLights},
     material::{Material, MaterialId},
     post_process::settings::DebugMode,
 };

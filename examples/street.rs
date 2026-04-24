@@ -3,6 +3,13 @@ use kerkenez::prelude::*;
 fn main() {
     let mut app = App::new("Street", 1280, 720);
 
+    app.set_ambient_light(0.1, 0.1, 0.1, 0.1);
+    app.set_directional_light(
+        DirectionalLight::new()
+            .direction(0.5, -0.8, -0.2)
+            .intensity(0.3),
+    );
+
     // Road
     app.draw(
         Cube::new()

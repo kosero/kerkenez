@@ -2,7 +2,9 @@ pub mod config;
 
 use self::config::Config;
 use crate::mesh::DrawCall;
+use crate::renderer::light::{DirectionalLight, PointLight, SceneLights};
 use crate::renderer::RenderState;
+
 use crate::renderer::material::{Material, MaterialId};
 use winit::{
     application::ApplicationHandler,
@@ -17,6 +19,7 @@ pub struct App {
     render_queue: Vec<DrawCall>,
     materials: Vec<(MaterialId, Material)>,
     next_material_id: usize,
+    pub lights: SceneLights,
     pub post_process_settings: crate::renderer::post_process::settings::PostProcessSettings,
 }
 
@@ -32,9 +35,23 @@ impl App {
             render_queue: Vec::new(),
             materials: Vec::new(),
             next_material_id: 1,
+            lights: SceneLights::default(),
             post_process_settings:
                 crate::renderer::post_process::settings::PostProcessSettings::default(),
         }
+    }
+
+    pub fn set_ambient_light(&mut self, r: f32, g: f32, b: f32, intensity: f32) {
+        self.lights.ambient_color = glam::vec3(r, g, b);
+        self.lights.ambient_intensity = intensity;
+    }
+
+    pub fn set_directional_light(&mut self, light: DirectionalLight) {
+        self.lights.directional = Some(light);
+    }
+
+    pub fn add_light(&mut self, light: PointLight) {
+        self.lights.point_lights.push(light);
     }
 
     pub fn add_material(&mut self, material: Material) -> MaterialId {
@@ -107,7 +124,7 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::RedrawRequested => {
-                state.render(&self.render_queue);
+                state.render(&self.render_queue, &self.lights);
             }
             WindowEvent::Resized(size) => state.resize(size.width, size.height),
             _ => (),
