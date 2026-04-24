@@ -288,8 +288,8 @@ impl RenderState {
 
             self.post_processing.end(
                 &self.gl,
-                self.ctx.window.inner_size().width as i32,
-                self.ctx.window.inner_size().height as i32,
+                size.width as i32,
+                size.height as i32,
                 &self.camera,
                 lights,
                 time,
