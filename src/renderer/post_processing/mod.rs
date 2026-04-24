@@ -365,7 +365,7 @@ impl PostProcessingManager {
                 crate::camera::CameraProjection::Perspective(p) => (p.near, p.far),
                 crate::camera::CameraProjection::Orthographic(o) => (o.near, o.far),
             };
-            let inv_vp = camera.view_projection_matrix().inverse();
+            let inv_vp = camera.inv_view_projection_matrix();
             let camera_pos = camera.position();
 
             // 1. SSAO Pass

@@ -20,6 +20,7 @@ pub struct Camera {
     view_matrix: Mat4,
     projection_matrix: Mat4,
     view_projection_matrix: Mat4,
+    inv_view_projection_matrix: Mat4,
 }
 
 impl Camera {
@@ -37,6 +38,7 @@ impl Camera {
             view_matrix: Mat4::IDENTITY,
             projection_matrix,
             view_projection_matrix: projection_matrix,
+            inv_view_projection_matrix: projection_matrix.inverse(),
         };
 
         cam.recalculate_matrices();
@@ -119,6 +121,10 @@ impl Camera {
         self.view_projection_matrix
     }
 
+    pub fn inv_view_projection_matrix(&self) -> Mat4 {
+        self.inv_view_projection_matrix
+    }
+
     pub fn update(&mut self) {
         if self.dirty {
             self.recalculate_matrices();
@@ -131,5 +137,6 @@ impl Camera {
 
         self.view_matrix = transform.inverse();
         self.view_projection_matrix = self.projection_matrix * self.view_matrix;
+        self.inv_view_projection_matrix = self.view_projection_matrix.inverse();
     }
 }
