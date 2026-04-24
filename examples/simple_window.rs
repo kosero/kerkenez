@@ -1,7 +1,7 @@
 use kerkenez::prelude::*;
 
 fn main() {
-    let mut app = App::new("Kerkenez 10k Squares", 800, 600);
+    let mut app = App::new("10k Squares", 800, 600);
 
     use rand::Rng;
     let mut rng = rand::thread_rng();

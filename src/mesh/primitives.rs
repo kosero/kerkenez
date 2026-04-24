@@ -77,6 +77,7 @@ pub enum MeshType {
 
 pub struct RenderCommand {
     pub mesh_type: MeshType,
+    pub material: crate::renderer::material::MaterialId,
     pub position: glam::Vec3,
     pub scale: glam::Vec3,
     pub rotation: glam::Quat,
@@ -87,11 +88,17 @@ impl RenderCommand {
     pub fn new(mesh_type: MeshType) -> Self {
         Self {
             mesh_type,
+            material: crate::renderer::material::MaterialId(0),
             position: glam::Vec3::ZERO,
             scale: glam::Vec3::ONE,
             rotation: glam::Quat::IDENTITY,
             color: glam::Vec3::ONE,
         }
+    }
+
+    pub fn material(mut self, id: crate::renderer::material::MaterialId) -> Self {
+        self.material = id;
+        self
     }
 
     pub fn at(mut self, x: f32, y: f32, z: f32) -> Self {

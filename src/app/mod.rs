@@ -13,6 +13,10 @@ pub struct App {
     config: Config,
     state: Option<RenderState>,
     render_queue: Vec<crate::mesh::RenderCommand>,
+    materials: Vec<(
+        crate::renderer::material::MaterialId,
+        crate::renderer::material::Material,
+    )>,
 }
 
 impl App {
@@ -25,6 +29,19 @@ impl App {
             },
             state: None,
             render_queue: Vec::new(),
+            materials: Vec::new(),
+        }
+    }
+
+    pub fn register_material(
+        &mut self,
+        id: crate::renderer::material::MaterialId,
+        material: crate::renderer::material::Material,
+    ) {
+        if let Some(state) = self.state.as_mut() {
+            state.register_material(id, material);
+        } else {
+            self.materials.push((id, material));
         }
     }
 
@@ -41,12 +58,17 @@ impl App {
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let state = RenderState::new(
+        let mut state = RenderState::new(
             event_loop,
             &self.config.title,
             self.config.width,
             self.config.height,
         );
+
+        // Register queued materials
+        for (id, material) in self.materials.drain(..) {
+            state.register_material(id, material);
+        }
 
         self.state = Some(state);
     }
