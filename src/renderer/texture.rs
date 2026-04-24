@@ -18,6 +18,15 @@ impl Texture {
         let (width, height) = img.dimensions();
         let pixels = img.into_raw();
 
+        Self::from_pixels(gl, width, height, &pixels)
+    }
+
+    pub fn white(gl: &Context) -> Self {
+        let pixels = vec![255, 255, 255, 255];
+        Self::from_pixels(gl, 1, 1, &pixels)
+    }
+
+    pub fn from_pixels(gl: &Context, width: u32, height: u32, pixels: &[u8]) -> Self {
         let id = unsafe {
             let texture = gl.create_texture().expect("Texture not created");
             gl.bind_texture(glow::TEXTURE_2D, Some(texture));
@@ -30,7 +39,7 @@ impl Texture {
                 0,
                 glow::RGBA,
                 glow::UNSIGNED_BYTE,
-                glow::PixelUnpackData::Slice(Some(pixels.as_slice())),
+                glow::PixelUnpackData::Slice(Some(pixels)),
             );
             gl.generate_mipmap(glow::TEXTURE_2D);
             gl.tex_parameter_i32(
@@ -46,12 +55,12 @@ impl Texture {
             gl.tex_parameter_i32(
                 glow::TEXTURE_2D,
                 glow::TEXTURE_WRAP_S,
-                glow::CLAMP_TO_EDGE as i32,
+                glow::REPEAT as i32,
             );
             gl.tex_parameter_i32(
                 glow::TEXTURE_2D,
                 glow::TEXTURE_WRAP_T,
-                glow::CLAMP_TO_EDGE as i32,
+                glow::REPEAT as i32,
             );
             texture
         };

@@ -95,6 +95,7 @@ pub struct RenderState {
 
     state_cache: GlStateCache,
     pub post_processing: post_processing::PostProcessingManager,
+    white_texture_id: TextureId,
 }
 
 impl RenderState {
@@ -138,7 +139,13 @@ impl RenderState {
             texture_path_index: HashMap::new(),
             state_cache: GlStateCache::new(),
             post_processing,
+            white_texture_id: TextureId(0), // Placeholder
         };
+
+        // Create default white texture
+        let white_tex = Texture::white(&state.gl);
+        state.textures.push(white_tex);
+        state.white_texture_id = TextureId(0); // It's the first texture in the list
         // RH: camera at +Z looking toward -Z (origin)
         state.camera.set_position(glam::vec3(0.0, 0.0, 10.0));
         state.camera.update();
@@ -173,6 +180,8 @@ impl RenderState {
         if let Some(path) = material.texture_path.take() {
             let tex_id = self.load_texture(&path);
             material.albedo_texture = Some(tex_id);
+        } else {
+            material.albedo_texture = Some(self.white_texture_id);
         }
         self.materials.insert(id, material);
     }
@@ -292,7 +301,6 @@ impl RenderState {
                 self.batches.get(&mesh_type),
                 self.materials.get(&material_id),
             ) {
-                let has_texture_loc = self.gl.get_uniform_location(self.program, "u_HasTexture");
                 let albedo_color_loc = self.gl.get_uniform_location(self.program, "u_AlbedoColor");
 
                 self.gl.uniform_4_f32(
@@ -305,10 +313,6 @@ impl RenderState {
 
                 if let Some(tex_id) = &material.albedo_texture {
                     self.textures[tex_id.0].bind(&self.gl, self.program, 0);
-                    self.gl.uniform_1_u32(has_texture_loc.as_ref(), 1);
-                } else {
-                    self.gl.bind_texture(glow::TEXTURE_2D, None);
-                    self.gl.uniform_1_u32(has_texture_loc.as_ref(), 0);
                 }
 
                 // State-cached VAO bind — skips if already bound
