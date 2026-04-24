@@ -35,6 +35,8 @@ pub struct PostProcessingSettings {
     // Vignette
     pub vignette_enabled: bool,
     pub vignette_intensity: f32,
+    pub vignette_radius: f32,
+    pub vignette_softness: f32,
 }
 
 impl Default for PostProcessingSettings {
@@ -61,6 +63,8 @@ impl Default for PostProcessingSettings {
 
             vignette_enabled: false,
             vignette_intensity: 0.75,
+            vignette_radius: 0.45,
+            vignette_softness: 0.45,
         }
     }
 }

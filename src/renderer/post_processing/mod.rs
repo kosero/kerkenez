@@ -45,6 +45,8 @@ struct UniformCache {
     saturation: Option<glow::UniformLocation>,
     ssao_texture: Option<glow::UniformLocation>,
     vignette_intensity: Option<glow::UniformLocation>,
+    vignette_radius: Option<glow::UniformLocation>,
+    vignette_softness: Option<glow::UniformLocation>,
     time: Option<glow::UniformLocation>,
 
     // Lighting
@@ -103,6 +105,8 @@ impl UniformCache {
                 saturation: gl.get_uniform_location(program, "u_Saturation"),
                 ssao_texture: gl.get_uniform_location(program, "u_SSAOTexture"),
                 vignette_intensity: gl.get_uniform_location(program, "u_VignetteIntensity"),
+                vignette_radius: gl.get_uniform_location(program, "u_VignetteRadius"),
+                vignette_softness: gl.get_uniform_location(program, "u_VignetteSoftness"),
                 time: gl.get_uniform_location(program, "u_Time"),
 
                 camera_pos: gl.get_uniform_location(program, "u_CameraPos"),
@@ -574,6 +578,14 @@ impl PostProcessingManager {
                     gl.uniform_1_f32(
                         variant.uniforms.vignette_intensity.as_ref(),
                         settings.vignette_intensity,
+                    );
+                    gl.uniform_1_f32(
+                        variant.uniforms.vignette_radius.as_ref(),
+                        settings.vignette_radius,
+                    );
+                    gl.uniform_1_f32(
+                        variant.uniforms.vignette_softness.as_ref(),
+                        settings.vignette_softness,
                     );
                 }
 

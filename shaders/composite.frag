@@ -61,6 +61,8 @@ uniform float u_Saturation;
 
 // Vignette
 uniform float u_VignetteIntensity;
+uniform float u_VignetteRadius;
+uniform float u_VignetteSoftness;
 
 // Temporal variation
 uniform float u_Time;
@@ -109,10 +111,9 @@ vec3 ApplyColorGrading(vec3 color) {
 
 //  Cinematic Vignette
 vec3 ApplyVignette(vec3 color, vec2 uv) {
-    uv = uv * 2.0 - 1.0;
-    float dist = dot(uv, uv);
-    float vignette = smoothstep(0.8, u_VignetteIntensity * 0.799, dist);
-    return color * clamp(vignette, 0.0, 1.0);
+    float dist = distance(uv, vec2(0.5));
+    float vignette = smoothstep(u_VignetteRadius, u_VignetteRadius - u_VignetteSoftness, dist);
+    return color * mix(1.0, vignette, u_VignetteIntensity);
 }
 
 //  Dithering (Banding / Şeritlenme Önleyici)
