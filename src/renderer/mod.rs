@@ -130,6 +130,7 @@ pub struct RenderState {
     pub post_processing: post_processing::PostProcessingManager,
     white_texture_id: TextureId,
     uniforms: MainUniforms,
+    batch_buffer: HashMap<(MeshType, MaterialId), Vec<Instance>>,
 }
 
 impl Drop for RenderState {
@@ -138,6 +139,16 @@ impl Drop for RenderState {
             self.gl.delete_program(self.program);
         }
     }
+}
+
+/// Grouping shared resources to satisfy Clippy's argument count limit
+struct DrawResources<'a> {
+    gl: &'a glow::Context,
+    batches: &'a HashMap<MeshType, MeshBatch>,
+    materials: &'a HashMap<MaterialId, Material>,
+    textures: &'a [Texture],
+    uniforms: &'a MainUniforms,
+    state_cache: &'a mut GlStateCache,
 }
 
 impl RenderState {
@@ -187,6 +198,7 @@ impl RenderState {
             post_processing,
             white_texture_id: TextureId::new(0), // Placeholder
             uniforms,
+            batch_buffer: HashMap::new(),
         };
 
         // Create default white texture
@@ -277,10 +289,21 @@ impl RenderState {
 
             self.setup_frame();
 
-            let groups = self.prepare_batches(render_queue);
+            self.prepare_batches(render_queue);
 
-            for ((mesh_type, material_id), instances) in groups {
-                self.draw_batch(mesh_type, material_id, &instances);
+            let mut resources = DrawResources {
+                gl: &self.gl,
+                batches: &self.batches,
+                materials: &self.materials,
+                textures: &self.textures,
+                uniforms: &self.uniforms,
+                state_cache: &mut self.state_cache,
+            };
+
+            for ((mesh_type, material_id), instances) in &self.batch_buffer {
+                if !instances.is_empty() {
+                    Self::draw_batch_internal(&mut resources, *mesh_type, *material_id, instances);
+                }
             }
 
             // Post-process pass invalidates state
@@ -319,17 +342,18 @@ impl RenderState {
         }
     }
 
-    fn prepare_batches(
-        &self,
-        render_queue: &[DrawCommand],
-    ) -> HashMap<(MeshType, MaterialId), Vec<Instance>> {
-        let mut groups: HashMap<(MeshType, MaterialId), Vec<Instance>> = HashMap::new();
+    fn prepare_batches(&mut self, render_queue: &[DrawCommand]) {
+        // Clear all vectors but keep capacity to avoid re-allocation
+        for vec in self.batch_buffer.values_mut() {
+            vec.clear();
+        }
+
         for cmd in render_queue {
             let model_matrix = glam::Mat4::from_translation(cmd.position)
                 * glam::Mat4::from_quat(cmd.rotation)
                 * glam::Mat4::from_scale(cmd.scale);
 
-            groups
+            self.batch_buffer
                 .entry((cmd.mesh_type, cmd.material))
                 .or_default()
                 .push(Instance {
@@ -337,22 +361,20 @@ impl RenderState {
                     tint: cmd.tint.to_vec4(),
                 });
         }
-        groups
     }
 
-    unsafe fn draw_batch(
-        &mut self,
+    unsafe fn draw_batch_internal(
+        res: &mut DrawResources,
         mesh_type: MeshType,
         material_id: MaterialId,
         instances: &[Instance],
     ) {
         unsafe {
-            if let (Some(batch), Some(material)) = (
-                self.batches.get(&mesh_type),
-                self.materials.get(&material_id),
-            ) {
-                self.gl.uniform_4_f32(
-                    self.uniforms.albedo_color.as_ref(),
+            if let (Some(batch), Some(material)) =
+                (res.batches.get(&mesh_type), res.materials.get(&material_id))
+            {
+                res.gl.uniform_4_f32(
+                    res.uniforms.albedo_color.as_ref(),
                     material.albedo_color.r,
                     material.albedo_color.g,
                     material.albedo_color.b,
@@ -360,31 +382,29 @@ impl RenderState {
                 );
 
                 if let Some(tex_id) = &material.albedo_texture {
-                    self.textures[tex_id.index()].bind_at(
-                        &self.gl,
-                        self.uniforms.albedo_texture.as_ref(),
+                    res.textures[tex_id.index()].bind_at(
+                        res.gl,
+                        res.uniforms.albedo_texture.as_ref(),
                         0,
                     );
                 }
 
                 // State-cached VAO bind — skips if already bound
-                self.state_cache.bind_vao(&self.gl, batch.vao);
-                self.gl
+                res.state_cache.bind_vao(res.gl, batch.vao);
+                res.gl
                     .bind_buffer(glow::ARRAY_BUFFER, Some(batch.instance_buffer));
 
                 // Buffer Orphaning: allocate with null first, then sub_data.
-                // Tells the driver "I don't need the old data" so it can
-                // pipeline the upload without stalling.
                 let byte_len = std::mem::size_of_val(instances);
-                self.gl
+                res.gl
                     .buffer_data_size(glow::ARRAY_BUFFER, byte_len as i32, glow::DYNAMIC_DRAW);
-                self.gl.buffer_sub_data_u8_slice(
+                res.gl.buffer_sub_data_u8_slice(
                     glow::ARRAY_BUFFER,
                     0,
                     bytemuck::cast_slice(instances),
                 );
 
-                pipeline::draw_instanced(&self.gl, batch.indices_count, instances.len() as i32);
+                pipeline::draw_instanced(res.gl, batch.indices_count, instances.len() as i32);
             }
         }
     }
