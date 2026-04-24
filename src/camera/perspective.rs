@@ -18,7 +18,7 @@ impl PerspectiveProjection {
     }
 
     pub fn projection_matrix(&self) -> Mat4 {
-        Mat4::perspective_lh(
+        Mat4::perspective_rh_gl(
             self.fov.to_radians(),
             self.aspect_ratio,
             self.near,

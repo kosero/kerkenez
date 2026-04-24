@@ -174,24 +174,24 @@ impl Mesh {
 pub struct Square;
 impl Square {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> RenderCommand {
-        RenderCommand::new(MeshType::Square)
+    pub fn new() -> DrawCall {
+        DrawCall::new(MeshType::Square)
     }
 }
 
 pub struct Triangle;
 impl Triangle {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> RenderCommand {
-        RenderCommand::new(MeshType::Triangle)
+    pub fn new() -> DrawCall {
+        DrawCall::new(MeshType::Triangle)
     }
 }
 
 pub struct Cube;
 impl Cube {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> RenderCommand {
-        RenderCommand::new(MeshType::Cube)
+    pub fn new() -> DrawCall {
+        DrawCall::new(MeshType::Cube)
     }
 }
 
@@ -202,7 +202,9 @@ pub enum MeshType {
     Cube,
 }
 
-pub struct RenderCommand {
+/// Describes a single object to be drawn: mesh type, transform, material,
+/// and color. Collected into batches by the renderer.
+pub struct DrawCall {
     pub mesh_type: MeshType,
     pub material: crate::renderer::material::MaterialId,
     pub position: glam::Vec3,
@@ -211,7 +213,7 @@ pub struct RenderCommand {
     pub color: glam::Vec4,
 }
 
-impl RenderCommand {
+impl DrawCall {
     pub fn new(mesh_type: MeshType) -> Self {
         Self {
             mesh_type,
@@ -240,6 +242,11 @@ impl RenderCommand {
 
     pub fn scale(mut self, s: f32) -> Self {
         self.scale = glam::Vec3::splat(s);
+        self
+    }
+
+    pub fn scale_xyz(mut self, x: f32, y: f32, z: f32) -> Self {
+        self.scale = glam::vec3(x, y, z);
         self
     }
 

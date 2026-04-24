@@ -15,6 +15,10 @@ pub struct Camera {
     position: Vec3,
     rotation: Quat,
 
+    /// Dirty flag — recalculation only happens once per frame
+    /// when `update()` is called, not on every setter call.
+    dirty: bool,
+
     view_matrix: Mat4,
     projection_matrix: Mat4,
     view_projection_matrix: Mat4,
@@ -31,6 +35,7 @@ impl Camera {
             projection,
             position: Vec3::ZERO,
             rotation: Quat::IDENTITY,
+            dirty: true,
             view_matrix: Mat4::IDENTITY,
             projection_matrix,
             view_projection_matrix: projection_matrix,
@@ -78,20 +83,20 @@ impl Camera {
                 ortho.right = aspect * half_height;
             }
         }
-        self.update_projection();
-    }
-
-    fn update_projection(&mut self) {
         self.projection_matrix = match &self.projection {
             CameraProjection::Orthographic(ortho) => ortho.projection_matrix(),
             CameraProjection::Perspective(persp) => persp.projection_matrix(),
         };
-        self.recalculate_matrices();
+        self.dirty = true;
     }
 
     pub fn set_projection(&mut self, projection: CameraProjection) {
+        self.projection_matrix = match &projection {
+            CameraProjection::Orthographic(ortho) => ortho.projection_matrix(),
+            CameraProjection::Perspective(persp) => persp.projection_matrix(),
+        };
         self.projection = projection;
-        self.update_projection();
+        self.dirty = true;
     }
 
     pub fn position(&self) -> Vec3 {
@@ -100,7 +105,7 @@ impl Camera {
 
     pub fn set_position(&mut self, position: Vec3) {
         self.position = position;
-        self.recalculate_matrices();
+        self.dirty = true;
     }
 
     pub fn rotation(&self) -> Quat {
@@ -109,11 +114,20 @@ impl Camera {
 
     pub fn set_rotation(&mut self, rotation: Quat) {
         self.rotation = rotation;
-        self.recalculate_matrices();
+        self.dirty = true;
     }
 
     pub fn view_projection_matrix(&self) -> Mat4 {
         self.view_projection_matrix
+    }
+
+    /// Call once per frame, before rendering. Recalculates matrices
+    /// only if any transform property changed since the last update.
+    pub fn update(&mut self) {
+        if self.dirty {
+            self.recalculate_matrices();
+            self.dirty = false;
+        }
     }
 
     fn recalculate_matrices(&mut self) {

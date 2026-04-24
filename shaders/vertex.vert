@@ -1,4 +1,4 @@
-#version 410
+#version 410 core
 
 layout(location = 2) in mat4 model;
 layout(location = 0) in vec3 position;

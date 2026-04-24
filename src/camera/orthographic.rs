@@ -22,7 +22,7 @@ impl OrthographicProjection {
     }
 
     pub fn projection_matrix(&self) -> Mat4 {
-        Mat4::orthographic_lh(
+        Mat4::orthographic_rh_gl(
             self.left,
             self.right,
             self.bottom,

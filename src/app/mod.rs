@@ -1,7 +1,7 @@
 pub mod config;
 
 use self::config::Config;
-use crate::mesh::RenderCommand;
+use crate::mesh::DrawCall;
 use crate::renderer::RenderState;
 use crate::renderer::material::{Material, MaterialId};
 use winit::{
@@ -14,9 +14,10 @@ use winit::{
 pub struct App {
     config: Config,
     state: Option<RenderState>,
-    render_queue: Vec<RenderCommand>,
+    render_queue: Vec<DrawCall>,
     materials: Vec<(MaterialId, Material)>,
     next_material_id: usize,
+    pub post_process_settings: crate::renderer::post_process::settings::PostProcessSettings,
 }
 
 impl App {
@@ -31,6 +32,8 @@ impl App {
             render_queue: Vec::new(),
             materials: Vec::new(),
             next_material_id: 1,
+            post_process_settings:
+                crate::renderer::post_process::settings::PostProcessSettings::default(),
         }
     }
 
@@ -53,8 +56,18 @@ impl App {
         }
     }
 
-    pub fn draw(&mut self, command: crate::mesh::RenderCommand) {
+    pub fn draw(&mut self, command: crate::mesh::DrawCall) {
         self.render_queue.push(command);
+    }
+
+    pub fn camera_mut(&mut self) -> Option<&mut crate::camera::Camera> {
+        self.state.as_mut().map(|s| &mut s.camera)
+    }
+
+    pub fn post_process_mut(
+        &mut self,
+    ) -> Option<&mut crate::renderer::post_process::PostProcessManager> {
+        self.state.as_mut().map(|s| &mut s.post_process)
     }
 
     pub fn run(mut self) {
@@ -83,6 +96,7 @@ impl ApplicationHandler for App {
             state.register_material(id, material);
         }
 
+        state.post_process.settings = self.post_process_settings.clone();
         self.state = Some(state);
     }
 

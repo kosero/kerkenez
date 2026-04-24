@@ -56,12 +56,13 @@ impl Texture {
         Self { id, width, height }
     }
 
-    pub fn bind(&self, gl: &Context, program: glow::NativeProgram) {
+    /// Bind this texture to the given texture unit and set the sampler uniform.
+    pub fn bind(&self, gl: &Context, program: glow::NativeProgram, unit: u32) {
         unsafe {
-            gl.active_texture(glow::TEXTURE0);
+            gl.active_texture(glow::TEXTURE0 + unit);
             gl.bind_texture(glow::TEXTURE_2D, Some(self.id));
             let tex_loc = gl.get_uniform_location(program, "u_Texture");
-            gl.uniform_1_i32(tex_loc.as_ref(), 0);
+            gl.uniform_1_i32(tex_loc.as_ref(), unit as i32);
         }
     }
 
