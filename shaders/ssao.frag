@@ -14,10 +14,7 @@ uniform mat4 u_InverseVP;
 uniform float u_SSAORadius;
 uniform float u_SSAOIntensity;
 uniform float u_SSAOBias;
-
-
-
-const int SSAO_SAMPLES = 16;
+uniform int u_SSAOSamples;
 const float PI2 = 6.28318530718;
 
 float Hash(vec2 p) {
@@ -45,10 +42,10 @@ void main() {
     float noise = Hash(gl_FragCoord.xy * 12.34);
 
     float occlusion = 0.0;
-    float sampleCount = float(SSAO_SAMPLES);
+    float sampleCount = float(u_SSAOSamples);
     float validSamples = 0.0;
 
-    for (int i = 0; i < SSAO_SAMPLES; i++) {
+    for (int i = 0; i < u_SSAOSamples; i++) {
         float t = (float(i) + noise) / sampleCount;
         float r = sqrt(t);
         float theta = t * PI2 * 8.5;

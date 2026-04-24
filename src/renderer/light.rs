@@ -1,5 +1,5 @@
-use glam::Vec3;
 use crate::renderer::color::Color;
+use glam::Vec3;
 
 pub const MAX_POINT_LIGHTS: usize = 32;
 

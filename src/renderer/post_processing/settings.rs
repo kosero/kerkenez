@@ -18,6 +18,7 @@ pub struct PostProcessingSettings {
     pub ssao_radius: f32,
     pub ssao_intensity: f32,
     pub ssao_bias: f32,
+    pub ssao_sample_count: i32,
 
     // Fog
     pub fog_enabled: bool,
@@ -46,6 +47,7 @@ impl Default for PostProcessingSettings {
             ssao_radius: 0.9,
             ssao_intensity: 1.0,
             ssao_bias: 0.015,
+            ssao_sample_count: 64,
 
             fog_enabled: true,
             fog_density: 0.02,

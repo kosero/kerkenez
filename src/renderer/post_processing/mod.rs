@@ -73,6 +73,7 @@ struct SsaoUniforms {
     ssao_radius: Option<glow::UniformLocation>,
     ssao_intensity: Option<glow::UniformLocation>,
     ssao_bias: Option<glow::UniformLocation>,
+    ssao_samples: Option<glow::UniformLocation>,
 }
 
 struct SsaoBlurUniforms {
@@ -148,6 +149,7 @@ impl SsaoUniforms {
                 ssao_radius: gl.get_uniform_location(program, "u_SSAORadius"),
                 ssao_intensity: gl.get_uniform_location(program, "u_SSAOIntensity"),
                 ssao_bias: gl.get_uniform_location(program, "u_SSAOBias"),
+                ssao_samples: gl.get_uniform_location(program, "u_SSAOSamples"),
             }
         }
     }
@@ -191,19 +193,22 @@ pub struct PostProcessingManager {
 impl PostProcessingManager {
     pub fn new(gl: &Context, width: i32, height: i32) -> Self {
         let fbo = GBuffer::new(gl, width, height);
-        // SSAO textures only need a single channel. We use R16F for precision, though R8 could work.
+        // SSAO at half resolution for performance
+        let half_w = (width / 2).max(1);
+        let half_h = (height / 2).max(1);
+
         let ssao_target = RenderTarget::new(
             gl,
-            width,
-            height,
+            half_w,
+            half_h,
             glow::R16F as i32,
             glow::RED,
             glow::HALF_FLOAT,
         );
         let ssao_blur_target = RenderTarget::new(
             gl,
-            width,
-            height,
+            half_w,
+            half_h,
             glow::R16F as i32,
             glow::RED,
             glow::HALF_FLOAT,
@@ -364,8 +369,8 @@ impl PostProcessingManager {
                     );
                     gl.uniform_2_f32(
                         self.ssao_uniforms.resolution.as_ref(),
-                        window_width as f32,
-                        window_height as f32,
+                        self.ssao_target.width as f32,
+                        self.ssao_target.height as f32,
                     );
 
                     gl.uniform_1_f32(
@@ -379,6 +384,10 @@ impl PostProcessingManager {
                     gl.uniform_1_f32(
                         self.ssao_uniforms.ssao_bias.as_ref(),
                         self.settings.ssao_bias,
+                    );
+                    gl.uniform_1_i32(
+                        self.ssao_uniforms.ssao_samples.as_ref(),
+                        self.settings.ssao_sample_count,
                     );
 
                     gl.disable(glow::DEPTH_TEST);
@@ -405,8 +414,8 @@ impl PostProcessingManager {
 
                     gl.uniform_2_f32(
                         self.ssao_blur_uniforms.resolution.as_ref(),
-                        window_width as f32,
-                        window_height as f32,
+                        self.ssao_blur_target.width as f32,
+                        self.ssao_blur_target.height as f32,
                     );
                     gl.uniform_1_f32(self.ssao_blur_uniforms.near.as_ref(), near);
                     gl.uniform_1_f32(self.ssao_blur_uniforms.far.as_ref(), far);
@@ -560,18 +569,20 @@ impl PostProcessingManager {
 
     pub fn resize(&mut self, gl: &Context, width: i32, height: i32) {
         self.fbo.resize(gl, width, height);
+        let half_w = (width / 2).max(1);
+        let half_h = (height / 2).max(1);
         self.ssao_target.resize(
             gl,
-            width,
-            height,
+            half_w,
+            half_h,
             glow::R16F as i32,
             glow::RED,
             glow::HALF_FLOAT,
         );
         self.ssao_blur_target.resize(
             gl,
-            width,
-            height,
+            half_w,
+            half_h,
             glow::R16F as i32,
             glow::RED,
             glow::HALF_FLOAT,

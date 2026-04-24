@@ -1,5 +1,5 @@
-use crate::renderer::texture::TextureId;
 use crate::renderer::color::Color;
+use crate::renderer::texture::TextureId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MaterialId(pub usize);

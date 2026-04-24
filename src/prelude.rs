@@ -6,11 +6,11 @@ pub use crate::mesh::{
 };
 pub use crate::renderer::{
     RenderState,
+    color::Color,
     draw_command::DrawCommand,
     light::{DirectionalLight, PointLight, SceneLights},
     material::{Material, MaterialId},
     post_processing::settings::DebugMode,
-    color::Color,
 };
 
 pub use glam::{Mat4, Vec3, Vec4, vec3, vec4};
