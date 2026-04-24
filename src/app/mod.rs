@@ -87,44 +87,53 @@ impl App {
         self.state.as_mut().map(|s| &mut s.post_process)
     }
 
-    pub fn run(mut self) {
+    pub fn run<F>(self, update: F)
+    where
+        F: FnMut(&mut App),
+    {
         let event_loop = EventLoop::new().expect("Failed to create event loop");
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
-        event_loop.run_app(&mut self).unwrap();
+        let mut runner = Runner { app: self, update };
+        event_loop.run_app(&mut runner).unwrap();
     }
 }
 
-impl ApplicationHandler for App {
+struct Runner<F> {
+    app: App,
+    update: F,
+}
+
+impl<F: FnMut(&mut App)> ApplicationHandler for Runner<F> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let vert_src = include_str!("../../shaders/vertex.vert");
         let frag_src = include_str!("../../shaders/fragment.frag");
 
         let mut state = RenderState::new(
             event_loop,
-            &self.config.title,
-            self.config.width,
-            self.config.height,
+            &self.app.config.title,
+            self.app.config.width,
+            self.app.config.height,
             vert_src,
             frag_src,
         );
 
         // Register queued materials
-        for (id, material) in self.materials.drain(..) {
+        for (id, material) in self.app.materials.drain(..) {
             state.register_material(id, material);
         }
 
-        state.post_process.settings = self.post_process_settings.clone();
-        self.state = Some(state);
+        state.post_process.settings = self.app.post_process_settings.clone();
+        self.app.state = Some(state);
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-        let Some(state) = self.state.as_mut() else {
+        let Some(state) = self.app.state.as_mut() else {
             return;
         };
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::RedrawRequested => {
-                state.render(&self.render_queue, &self.lights);
+                state.render(&self.app.render_queue, &self.app.lights);
             }
             WindowEvent::Resized(size) => state.resize(size.width, size.height),
             _ => (),
@@ -132,8 +141,17 @@ impl ApplicationHandler for App {
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        if let Some(state) = self.state.as_mut() {
-            state.request_redraw();
+        if self.app.state.is_some() {
+            // Clear the render queue for the new frame
+            self.app.render_queue.clear();
+            
+            // Run user update logic
+            (self.update)(&mut self.app);
+            
+            // Request redraw with the new queue
+            if let Some(state) = self.app.state.as_mut() {
+                state.request_redraw();
+            }
         }
     }
 }
