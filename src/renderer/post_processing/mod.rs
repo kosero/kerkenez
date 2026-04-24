@@ -215,16 +215,27 @@ impl PostProcessingManager {
         let ssao_frag_src = include_str!("../../../shaders/ssao.frag");
         let ssao_blur_frag_src = include_str!("../../../shaders/ssao_blur.frag");
 
-        let variants = HashMap::new();
+        let common_src = include_str!("../../../shaders/common.glsl");
+        let inject_common = |src: &str| {
+            let version = "#version 410 core\n";
+            if let Some(stripped) = src.strip_prefix(version) {
+                format!("{}{}\n{}", version, common_src, stripped)
+            } else {
+                format!("{}\n{}", common_src, src)
+            }
+        };
+
+        let ssao_frag_final = inject_common(ssao_frag_src);
+        let ssao_blur_frag_final = inject_common(ssao_blur_frag_src);
 
         let (ssao_program, ssao_blur_program) = unsafe {
             let sp = gl.create_program().expect("Failed to create ssao program");
-            shader::create_shaders(gl, sp, vert_src, ssao_frag_src);
+            shader::create_shaders(gl, sp, vert_src, &ssao_frag_final);
 
             let sbp = gl
                 .create_program()
                 .expect("Failed to create ssao blur program");
-            shader::create_shaders(gl, sbp, vert_src, ssao_blur_frag_src);
+            shader::create_shaders(gl, sbp, vert_src, &ssao_blur_frag_final);
 
             (sp, sbp)
         };
@@ -241,7 +252,7 @@ impl PostProcessingManager {
             ssao_uniforms,
             ssao_blur_program,
             ssao_blur_uniforms,
-            variants,
+            variants: HashMap::new(),
             settings: PostProcessingSettings::default(),
         }
     }
@@ -271,6 +282,7 @@ impl PostProcessingManager {
         self.variants.entry(defines).or_insert_with(|| {
             let vert_src = include_str!("../../../shaders/fullscreen.vert");
             let frag_src = include_str!("../../../shaders/composite.frag");
+            let common_src = include_str!("../../../shaders/common.glsl");
 
             let mut define_str = format!("#define DEBUG_MODE {}\n", defines.debug_mode);
             if defines.ssao_enabled {
@@ -288,9 +300,9 @@ impl PostProcessingManager {
 
             let version_pragma = "#version 410 core\n";
             let frag_src_modified = if let Some(stripped) = frag_src.strip_prefix(version_pragma) {
-                format!("{version_pragma}{define_str}{stripped}")
+                format!("{version_pragma}{define_str}{common_src}\n{stripped}")
             } else {
-                format!("{define_str}{frag_src}")
+                format!("{define_str}{common_src}\n{frag_src}")
             };
 
             unsafe {

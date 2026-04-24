@@ -64,16 +64,7 @@ uniform float u_VignetteIntensity;
 
 //  Utility Functions
 
-float LinearizeDepth(float depth) {
-    float z = depth * 2.0 - 1.0; // NDC
-    return (2.0 * u_Near * u_Far) / (u_Far + u_Near - z * (u_Far - u_Near));
-}
 
-vec3 WorldPosFromDepth(vec2 uv, float depth) {
-    vec4 ndc = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
-    vec4 wp = u_InverseVP * ndc;
-    return wp.xyz / wp.w;
-}
 
 //  G-Buffer Normal Fetch
 
@@ -130,7 +121,7 @@ vec3 ApplyDithering(vec3 color, vec2 uv) {
 //  Main
 void main() {
     float rawDepth = texture(u_DepthTexture, v_TexCoords).r;
-    float linearDepth = LinearizeDepth(rawDepth);
+    float linearDepth = LinearizeDepth(rawDepth, u_Near, u_Far);
 
     #if DEBUG_MODE == 1
     float d = linearDepth / u_Far;
@@ -145,7 +136,7 @@ void main() {
 
     vec3 albedo = texture(u_ScreenTexture, v_TexCoords).rgb;
     vec3 normal = GetNormal(v_TexCoords);
-    vec3 fragPos = WorldPosFromDepth(v_TexCoords, rawDepth);
+    vec3 fragPos = WorldPosFromDepth(v_TexCoords, rawDepth, u_InverseVP);
     vec3 viewDir = normalize(u_CameraPos - fragPos);
 
     // Hardcoded for now (could come from G-Buffer RT2 later)

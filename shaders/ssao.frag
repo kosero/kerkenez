@@ -15,16 +15,7 @@ uniform float u_SSAORadius;
 uniform float u_SSAOIntensity;
 uniform float u_SSAOBias;
 
-float LinearizeDepth(float depth) {
-    float z = depth * 2.0 - 1.0; // NDC
-    return (2.0 * u_Near * u_Far) / (u_Far + u_Near - z * (u_Far - u_Near));
-}
 
-vec3 WorldPosFromDepth(vec2 uv, float depth) {
-    vec4 ndc = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
-    vec4 wp = u_InverseVP * ndc;
-    return wp.xyz / wp.w;
-}
 
 const int SSAO_SAMPLES = 16;
 const float PI2 = 6.28318530718;
@@ -37,7 +28,7 @@ float Hash(vec2 p) {
 
 void main() {
     float rawDepth = texture(u_DepthTexture, v_TexCoords).r;
-    float linearDepth = LinearizeDepth(rawDepth);
+    float linearDepth = LinearizeDepth(rawDepth, u_Near, u_Far);
 
     if (linearDepth >= u_Far * 0.99) {
         FragColor = 1.0;
@@ -48,7 +39,7 @@ void main() {
 
     // G-Buffer normal for hemisphere orientation
     vec3 normal = normalize(texture(u_NormalTexture, v_TexCoords).rgb);
-    vec3 fragPos = WorldPosFromDepth(v_TexCoords, rawDepth);
+    vec3 fragPos = WorldPosFromDepth(v_TexCoords, rawDepth, u_InverseVP);
 
     float radius = clamp(u_SSAORadius / linearDepth, 0.005, 0.2);
     float noise = Hash(gl_FragCoord.xy * 12.34);
@@ -72,8 +63,8 @@ void main() {
         validSamples += 1.0;
 
         float sampleRawDepth = texture(u_DepthTexture, sampleUV).r;
-        float sampleLin = LinearizeDepth(sampleRawDepth);
-        vec3 samplePos = WorldPosFromDepth(sampleUV, sampleRawDepth);
+        float sampleLin = LinearizeDepth(sampleRawDepth, u_Near, u_Far);
+        vec3 samplePos = WorldPosFromDepth(sampleUV, sampleRawDepth, u_InverseVP);
 
         // Direction from fragment to sample in world space
         vec3 sampleDir = samplePos - fragPos;
