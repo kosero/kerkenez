@@ -1,16 +1,26 @@
 use glow::{Context, HasContext, NativeTexture};
+use std::rc::Rc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TextureId(pub usize);
 
 pub struct Texture {
+    gl: Rc<Context>,
     pub id: NativeTexture,
     pub width: u32,
     pub height: u32,
 }
 
+impl Drop for Texture {
+    fn drop(&mut self) {
+        unsafe {
+            self.gl.delete_texture(self.id);
+        }
+    }
+}
+
 impl Texture {
-    pub fn load(gl: &Context, path: &str) -> Self {
+    pub fn load(gl: &Rc<Context>, path: &str) -> Self {
         let img = image::open(path)
             .unwrap_or_else(|e| panic!("Texture not loaded '{path}': {e}"))
             .flipv()
@@ -21,12 +31,12 @@ impl Texture {
         Self::from_pixels(gl, width, height, &pixels)
     }
 
-    pub fn white(gl: &Context) -> Self {
+    pub fn white(gl: &Rc<Context>) -> Self {
         let pixels = vec![255, 255, 255, 255];
         Self::from_pixels(gl, 1, 1, &pixels)
     }
 
-    pub fn from_pixels(gl: &Context, width: u32, height: u32, pixels: &[u8]) -> Self {
+    pub fn from_pixels(gl: &Rc<Context>, width: u32, height: u32, pixels: &[u8]) -> Self {
         let id = unsafe {
             let texture = gl.create_texture().expect("Texture not created");
             gl.bind_texture(glow::TEXTURE_2D, Some(texture));
@@ -57,7 +67,12 @@ impl Texture {
             texture
         };
 
-        Self { id, width, height }
+        Self {
+            gl: gl.clone(),
+            id,
+            width,
+            height,
+        }
     }
 
     /// Bind this texture to the given texture unit and set the sampler uniform.
@@ -76,9 +91,4 @@ impl Texture {
         }
     }
 
-    pub fn delete(&self, gl: &Context) {
-        unsafe {
-            gl.delete_texture(self.id);
-        }
-    }
 }

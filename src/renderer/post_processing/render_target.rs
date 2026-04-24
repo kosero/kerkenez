@@ -1,4 +1,5 @@
 use glow::{Context, HasContext, PixelUnpackData};
+use std::rc::Rc;
 
 /// G-Buffer backed framebuffer with Multiple Render Targets (MRT).
 /// Attachments:
@@ -6,6 +7,7 @@ use glow::{Context, HasContext, PixelUnpackData};
 /// - COLOR_ATTACHMENT1: World-space Normal (RGBA16F)
 /// - DEPTH_ATTACHMENT:  Depth (DEPTH_COMPONENT32F)
 pub struct GBuffer {
+    gl: Rc<Context>,
     pub fbo: glow::Framebuffer,
     pub color_texture: glow::Texture,
     pub normal_texture: glow::Texture,
@@ -14,8 +16,19 @@ pub struct GBuffer {
     pub height: i32,
 }
 
+impl Drop for GBuffer {
+    fn drop(&mut self) {
+        unsafe {
+            self.gl.delete_framebuffer(self.fbo);
+            self.gl.delete_texture(self.color_texture);
+            self.gl.delete_texture(self.normal_texture);
+            self.gl.delete_texture(self.depth_texture);
+        }
+    }
+}
+
 impl GBuffer {
-    pub fn new(gl: &Context, width: i32, height: i32) -> Self {
+    pub fn new(gl: &Rc<Context>, width: i32, height: i32) -> Self {
         unsafe {
             let fbo = gl
                 .create_framebuffer()
@@ -161,6 +174,7 @@ impl GBuffer {
             gl.bind_framebuffer(glow::FRAMEBUFFER, None);
 
             Self {
+                gl: gl.clone(),
                 fbo,
                 color_texture,
                 normal_texture,
@@ -240,26 +254,28 @@ impl GBuffer {
         }
     }
 
-    pub fn delete(&self, gl: &Context) {
-        unsafe {
-            gl.delete_framebuffer(self.fbo);
-            gl.delete_texture(self.color_texture);
-            gl.delete_texture(self.normal_texture);
-            gl.delete_texture(self.depth_texture);
-        }
-    }
 }
 
 pub struct RenderTarget {
+    gl: Rc<Context>,
     pub fbo: glow::Framebuffer,
     pub color_texture: glow::Texture,
     pub width: i32,
     pub height: i32,
 }
 
+impl Drop for RenderTarget {
+    fn drop(&mut self) {
+        unsafe {
+            self.gl.delete_framebuffer(self.fbo);
+            self.gl.delete_texture(self.color_texture);
+        }
+    }
+}
+
 impl RenderTarget {
     pub fn new(
-        gl: &Context,
+        gl: &Rc<Context>,
         width: i32,
         height: i32,
         internal_format: i32,
@@ -323,6 +339,7 @@ impl RenderTarget {
             gl.bind_framebuffer(glow::FRAMEBUFFER, None);
 
             Self {
+                gl: gl.clone(),
                 fbo,
                 color_texture,
                 width,
@@ -362,10 +379,4 @@ impl RenderTarget {
         }
     }
 
-    pub fn delete(&self, gl: &Context) {
-        unsafe {
-            gl.delete_framebuffer(self.fbo);
-            gl.delete_texture(self.color_texture);
-        }
-    }
 }

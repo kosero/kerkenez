@@ -21,16 +21,28 @@ use glutin::prelude::GlSurface;
 use glutin::surface::{Surface, WindowSurface};
 use std::collections::HashMap;
 use std::num::NonZeroU32;
+use std::rc::Rc;
 use texture::{Texture, TextureId};
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
-#[allow(dead_code)]
 pub struct MeshBatch {
+    gl: Rc<Context>,
     vao: glow::VertexArray,
     vbo: glow::Buffer,
     ebo: glow::Buffer,
     instance_buffer: glow::Buffer,
     indices_count: i32,
+}
+
+impl Drop for MeshBatch {
+    fn drop(&mut self) {
+        unsafe {
+            self.gl.delete_vertex_array(self.vao);
+            self.gl.delete_buffer(self.vbo);
+            self.gl.delete_buffer(self.ebo);
+            self.gl.delete_buffer(self.instance_buffer);
+        }
+    }
 }
 
 // GL State Cache
@@ -83,7 +95,7 @@ pub struct GraphicsContext {
 }
 
 pub struct RenderState {
-    gl: Context,
+    gl: Rc<Context>,
     ctx: GraphicsContext,
     program: glow::Program,
     pub camera: Camera,
@@ -98,6 +110,14 @@ pub struct RenderState {
     state_cache: GlStateCache,
     pub post_processing: post_processing::PostProcessingManager,
     white_texture_id: TextureId,
+}
+
+impl Drop for RenderState {
+    fn drop(&mut self) {
+        unsafe {
+            self.gl.delete_program(self.program);
+        }
+    }
 }
 
 impl RenderState {
@@ -197,6 +217,7 @@ impl RenderState {
             self.batches.insert(
                 mesh_type,
                 MeshBatch {
+                    gl: self.gl.clone(),
                     vao,
                     vbo,
                     ebo,

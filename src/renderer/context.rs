@@ -10,13 +10,15 @@ use glutin_winit::{DisplayBuilder, GlWindow};
 use raw_window_handle::HasWindowHandle;
 use winit::{dpi::LogicalSize, event_loop::ActiveEventLoop, window::Window};
 
+use std::rc::Rc;
+
 pub fn init_context(
     event_loop: &ActiveEventLoop,
     title: &str,
     width: i32,
     height: i32,
 ) -> (
-    Context,
+    Rc<Context>,
     Surface<WindowSurface>,
     PossiblyCurrentContext,
     Window,
@@ -74,7 +76,7 @@ pub fn init_context(
             .expect("Failed to make context current");
 
         // Initialize Glow bindings
-        let gl = glow::Context::from_loader_function_cstr(|s| gl_display.get_proc_address(s));
+        let gl = Rc::new(glow::Context::from_loader_function_cstr(|s| gl_display.get_proc_address(s)));
 
         // Disable V-Sync for uncapped framerate
         gl_surface

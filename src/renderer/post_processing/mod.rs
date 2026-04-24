@@ -9,6 +9,7 @@ use crate::renderer::light::{MAX_POINT_LIGHTS, SceneLights};
 use crate::renderer::shader;
 use glow::{Context, HasContext};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct ShaderDefines {
@@ -183,6 +184,7 @@ struct ProgramVariant {
 }
 
 pub struct PostProcessingManager {
+    gl: Rc<Context>,
     fbo: GBuffer,
     ssao_target: RenderTarget,
     ssao_blur_target: RenderTarget,
@@ -198,8 +200,20 @@ pub struct PostProcessingManager {
     pub settings: PostProcessingSettings,
 }
 
+impl Drop for PostProcessingManager {
+    fn drop(&mut self) {
+        unsafe {
+            self.gl.delete_program(self.ssao_program);
+            self.gl.delete_program(self.ssao_blur_program);
+            for variant in self.variants.values() {
+                self.gl.delete_program(variant.program);
+            }
+        }
+    }
+}
+
 impl PostProcessingManager {
-    pub fn new(gl: &Context, width: i32, height: i32) -> Self {
+    pub fn new(gl: &Rc<Context>, width: i32, height: i32) -> Self {
         let fbo = GBuffer::new(gl, width, height);
         // SSAO at half resolution for performance
         let half_w = (width / 2).max(1);
@@ -257,6 +271,7 @@ impl PostProcessingManager {
         let ssao_blur_uniforms = SsaoBlurUniforms::new(gl, ssao_blur_program);
 
         Self {
+            gl: gl.clone(),
             fbo,
             ssao_target,
             ssao_blur_target,
@@ -618,17 +633,4 @@ impl PostProcessingManager {
         );
     }
 
-    pub fn delete(&self, gl: &Context) {
-        self.fbo.delete(gl);
-        self.ssao_target.delete(gl);
-        self.ssao_blur_target.delete(gl);
-        self.triangle.delete(gl);
-        unsafe {
-            gl.delete_program(self.ssao_program);
-            gl.delete_program(self.ssao_blur_program);
-            for variant in self.variants.values() {
-                gl.delete_program(variant.program);
-            }
-        }
-    }
 }
