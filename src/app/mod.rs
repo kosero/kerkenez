@@ -25,6 +25,7 @@ pub struct App {
     pub post_processing_settings:
         crate::renderer::post_processing::settings::PostProcessingSettings,
     pub start_time: Instant,
+    last_frame_time: Instant,
 }
 
 impl App {
@@ -43,6 +44,7 @@ impl App {
             post_processing_settings:
                 crate::renderer::post_processing::settings::PostProcessingSettings::default(),
             start_time: Instant::now(),
+            last_frame_time: Instant::now(),
         }
     }
 
@@ -105,7 +107,7 @@ impl App {
 
     pub fn run<F>(&mut self, update: F)
     where
-        F: FnMut(&mut App),
+        F: FnMut(&mut App, f32),
     {
         let event_loop = EventLoop::new().expect("Failed to create event loop");
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
@@ -119,7 +121,7 @@ struct Runner<'a, F> {
     update: F,
 }
 
-impl<'a, F: FnMut(&mut App)> ApplicationHandler for Runner<'a, F> {
+impl<'a, F: FnMut(&mut App, f32)> ApplicationHandler for Runner<'a, F> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let vert_src = include_str!("../../shaders/geometry.vert");
         let frag_src = include_str!("../../shaders/geometry.frag");
@@ -166,11 +168,15 @@ impl<'a, F: FnMut(&mut App)> ApplicationHandler for Runner<'a, F> {
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
         if self.app.state.is_some() {
+            let now = Instant::now();
+            let dt = now.duration_since(self.app.last_frame_time).as_secs_f32();
+            self.app.last_frame_time = now;
+
             // Clear the render queue for the new frame
             self.app.render_queue.clear();
 
             // Run user update logic
-            (self.update)(self.app);
+            (self.update)(self.app, dt);
 
             // Request redraw with the new queue
             if let Some(state) = self.app.state.as_mut() {

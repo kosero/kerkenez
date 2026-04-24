@@ -10,7 +10,7 @@ fn main() {
             .intensity(0.3),
     );
 
-    app.run(|app| {
+    app.run(|app, _dt| {
         // Road
         app.draw(
             DrawCommand::cube()
