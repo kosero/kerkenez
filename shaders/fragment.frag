@@ -1,7 +1,7 @@
 #version 410 core
 
 in vec2 v_tex_coords;
-in vec4 v_color;
+in vec4 v_tint;
 in vec3 v_world_normal;
 in vec3 v_world_pos;
 
@@ -11,13 +11,13 @@ layout(location = 1) out vec4 g_normal;
 
 uniform sampler2D u_Texture;
 uniform bool u_HasTexture;
+uniform vec4 u_AlbedoColor;
 
 void main() {
-    // RT0: Albedo (color/texture)
     if (u_HasTexture) {
-        g_albedo = texture(u_Texture, v_tex_coords) * v_color;
+        g_albedo = texture(u_Texture, v_tex_coords) * v_tint * u_AlbedoColor;
     } else {
-        g_albedo = v_color;
+        g_albedo = v_tint * u_AlbedoColor;
     }
 
     // RT1: World-space normal (packed into RGB, w=1.0)

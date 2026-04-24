@@ -6,7 +6,7 @@ pub struct DrawCommand {
     pub position: glam::Vec3,
     pub scale: glam::Vec3,
     pub rotation: glam::Quat,
-    pub color: glam::Vec4,
+    pub tint: glam::Vec4,
 }
 
 impl DrawCommand {
@@ -17,7 +17,7 @@ impl DrawCommand {
             position: glam::Vec3::ZERO,
             scale: glam::Vec3::ONE,
             rotation: glam::Quat::IDENTITY,
-            color: glam::Vec4::ONE,
+            tint: glam::Vec4::ONE,
         }
     }
 
@@ -46,8 +46,8 @@ impl DrawCommand {
         self
     }
 
-    pub fn color(mut self, r: f32, g: f32, b: f32, a: f32) -> Self {
-        self.color = glam::vec4(r, g, b, a);
+    pub fn tint(mut self, r: f32, g: f32, b: f32, a: f32) -> Self {
+        self.tint = glam::vec4(r, g, b, a);
         self
     }
 }

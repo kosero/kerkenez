@@ -1,5 +1,8 @@
 use glow::{Context, HasContext, NativeTexture};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TextureId(pub usize);
+
 pub struct Texture {
     pub id: NativeTexture,
     pub width: u32,

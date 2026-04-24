@@ -19,13 +19,9 @@ use glutin::prelude::GlSurface;
 use glutin::surface::{Surface, WindowSurface};
 use std::collections::HashMap;
 use std::num::NonZeroU32;
-use texture::Texture;
+use texture::{Texture, TextureId};
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TextureId(usize);
-
 #[allow(dead_code)]
 pub struct MeshBatch {
     vao: glow::VertexArray,
@@ -173,9 +169,10 @@ impl RenderState {
         id
     }
 
-    pub fn register_material(&mut self, id: MaterialId, material: Material) {
-        if let Some(path) = &material.texture_path {
-            self.load_texture(path);
+    pub fn register_material(&mut self, id: MaterialId, mut material: Material) {
+        if let Some(path) = material.texture_path.take() {
+            let tex_id = self.load_texture(&path);
+            material.albedo_texture = Some(tex_id);
         }
         self.materials.insert(id, material);
     }
@@ -278,7 +275,7 @@ impl RenderState {
                 .or_default()
                 .push(Instance {
                     model_matrix,
-                    color: cmd.color,
+                    tint: cmd.tint,
                 });
         }
         groups
@@ -296,12 +293,13 @@ impl RenderState {
                 self.materials.get(&material_id),
             ) {
                 let has_texture_loc = self.gl.get_uniform_location(self.program, "u_HasTexture");
+                let albedo_color_loc = self.gl.get_uniform_location(self.program, "u_AlbedoColor");
+                
+                self.gl.uniform_4_f32(albedo_color_loc.as_ref(), material.albedo_color.x, material.albedo_color.y, material.albedo_color.z, material.albedo_color.w);
 
-                if let Some(path) = &material.texture_path {
-                    if let Some(&tex_id) = self.texture_path_index.get(path) {
-                        self.textures[tex_id.0].bind(&self.gl, self.program, 0);
-                        self.gl.uniform_1_u32(has_texture_loc.as_ref(), 1);
-                    }
+                if let Some(tex_id) = &material.albedo_texture {
+                    self.textures[tex_id.0].bind(&self.gl, self.program, 0);
+                    self.gl.uniform_1_u32(has_texture_loc.as_ref(), 1);
                 } else {
                     self.gl.bind_texture(glow::TEXTURE_2D, None);
                     self.gl.uniform_1_u32(has_texture_loc.as_ref(), 0);

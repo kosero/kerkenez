@@ -32,7 +32,7 @@ pub fn setup_instancing(gl: &Context) {
         }
 
         gl.enable_vertex_attrib_array(6);
-        gl.vertex_attrib_pointer_f32(6, 3, glow::FLOAT, false, stride, 64);
+        gl.vertex_attrib_pointer_f32(6, 4, glow::FLOAT, false, stride, 64);
         gl.vertex_attrib_divisor(6, 1);
     }
 }

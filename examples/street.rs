@@ -15,7 +15,7 @@ fn main() {
         Cube::new()
             .at(0.0, -2.0, -10.0)
             .scale_xyz(12.0, 0.1, 80.0)
-            .color(0.15, 0.15, 0.15, 1.0),
+            .tint(0.15, 0.15, 0.15, 1.0),
     );
 
     // Road markings (dashed line)
@@ -25,7 +25,7 @@ fn main() {
             Cube::new()
                 .at(0.0, -1.94, z)
                 .scale_xyz(0.2, 0.05, 2.0)
-                .color(0.9, 0.9, 0.9, 1.0),
+                .tint(0.9, 0.9, 0.9, 1.0),
         );
     }
 
@@ -34,13 +34,13 @@ fn main() {
         Cube::new()
             .at(-7.5, -1.9, -10.0)
             .scale_xyz(3.0, 0.2, 80.0)
-            .color(0.3, 0.3, 0.3, 1.0),
+            .tint(0.3, 0.3, 0.3, 1.0),
     );
     app.draw(
         Cube::new()
             .at(7.5, -1.9, -10.0)
             .scale_xyz(3.0, 0.2, 80.0)
-            .color(0.3, 0.3, 0.3, 1.0),
+            .tint(0.3, 0.3, 0.3, 1.0),
     );
 
     // Buildings
@@ -69,7 +69,7 @@ fn main() {
                 Cube::new()
                     .at(x_pos, -1.8 + height / 2.0, z)
                     .scale_xyz(5.0, height, 5.0)
-                    .color(r, g, b, 1.0),
+                    .tint(r, g, b, 1.0),
             );
 
             // Windows
@@ -85,7 +85,7 @@ fn main() {
                         Cube::new()
                             .at(wx, y, wz)
                             .scale_xyz(0.1, 1.2, 1.0)
-                            .color(0.5, 0.8, 1.0, 1.0), // Light blue glass
+                            .tint(0.5, 0.8, 1.0, 1.0), // Light blue glass
                     );
 
                     // Balcony (only some floors)
@@ -94,7 +94,7 @@ fn main() {
                             Cube::new()
                                 .at(wx - sign * 0.6, y - 0.6, wz)
                                 .scale_xyz(1.4, 0.2, 1.6)
-                                .color(0.2, 0.2, 0.2, 1.0),
+                                .tint(0.2, 0.2, 0.2, 1.0),
                         );
                     }
                 }
@@ -105,7 +105,7 @@ fn main() {
                 Cube::new()
                     .at(x_pos - sign * 2.5, -0.5, z)
                     .scale_xyz(0.2, 2.0, 4.0)
-                    .color(0.05, 0.05, 0.05, 1.0), // Dark glass front
+                    .tint(0.05, 0.05, 0.05, 1.0), // Dark glass front
             );
         }
     }
@@ -116,14 +116,14 @@ fn main() {
         Cube::new()
             .at(2.5, -1.3, -2.0)
             .scale_xyz(2.0, 0.8, 4.2)
-            .color(0.8, 0.1, 0.1, 1.0), // Red car
+            .tint(0.8, 0.1, 0.1, 1.0), // Red car
     );
     // Cabin
     app.draw(
         Cube::new()
             .at(2.5, -0.5, -2.2)
             .scale_xyz(1.8, 0.8, 2.0)
-            .color(0.1, 0.1, 0.1, 1.0), // Black windows
+            .tint(0.1, 0.1, 0.1, 1.0), // Black windows
     );
     // Wheels
     for wx in [-1.0, 1.0].iter() {
@@ -132,7 +132,7 @@ fn main() {
                 Cube::new()
                     .at(2.5 + wx * 1.0, -1.6, -2.0 + wz)
                     .scale_xyz(0.4, 0.6, 0.6)
-                    .color(0.05, 0.05, 0.05, 1.0),
+                    .tint(0.05, 0.05, 0.05, 1.0),
             );
         }
     }
@@ -142,13 +142,13 @@ fn main() {
         Cube::new()
             .at(-2.5, -0.5, -12.0)
             .scale_xyz(2.5, 2.5, 6.0)
-            .color(0.2, 0.4, 0.8, 1.0), // Blue truck
+            .tint(0.2, 0.4, 0.8, 1.0), // Blue truck
     );
     app.draw(
         Cube::new()
             .at(-2.5, -0.8, -8.0)
             .scale_xyz(2.5, 1.8, 2.0)
-            .color(0.9, 0.9, 0.9, 1.0), // White cabin
+            .tint(0.9, 0.9, 0.9, 1.0), // White cabin
     );
 
     // Street lights
@@ -161,21 +161,21 @@ fn main() {
                 Cube::new()
                     .at(x, 1.5, z)
                     .scale_xyz(0.2, 7.0, 0.2)
-                    .color(0.2, 0.2, 0.2, 1.0),
+                    .tint(0.2, 0.2, 0.2, 1.0),
             );
             // Arm
             app.draw(
                 Cube::new()
                     .at(x - side * 1.0, 4.9, z)
                     .scale_xyz(2.0, 0.15, 0.2)
-                    .color(0.2, 0.2, 0.2, 1.0),
+                    .tint(0.2, 0.2, 0.2, 1.0),
             );
             // Lamp
             app.draw(
                 Cube::new()
                     .at(x - side * 1.8, 4.8, z)
                     .scale_xyz(0.4, 0.1, 0.4)
-                    .color(1.0, 1.0, 0.6, 1.0), // Yellow light
+                    .tint(1.0, 1.0, 0.6, 1.0), // Yellow light
             );
         }
     }
@@ -190,20 +190,20 @@ fn main() {
                 Cube::new()
                     .at(x, -1.0, z)
                     .scale_xyz(0.3, 2.0, 0.3)
-                    .color(0.4, 0.2, 0.1, 1.0),
+                    .tint(0.4, 0.2, 0.1, 1.0),
             );
             // Leaves
             app.draw(
                 Cube::new()
                     .at(x, 0.5, z)
                     .scale_xyz(1.5, 1.5, 1.5)
-                    .color(0.2, 0.6, 0.2, 1.0),
+                    .tint(0.2, 0.6, 0.2, 1.0),
             );
             app.draw(
                 Cube::new()
                     .at(x, 1.5, z)
                     .scale_xyz(1.0, 1.0, 1.0)
-                    .color(0.3, 0.7, 0.3, 1.0),
+                    .tint(0.3, 0.7, 0.3, 1.0),
             );
         }
     }
