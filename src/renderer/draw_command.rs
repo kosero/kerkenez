@@ -14,7 +14,7 @@ impl DrawCommand {
     pub fn new(mesh_type: MeshType) -> Self {
         Self {
             mesh_type,
-            material: crate::renderer::material::MaterialId(0),
+            material: crate::renderer::material::MaterialId::new(0),
             position: glam::Vec3::ZERO,
             scale: glam::Vec3::ONE,
             rotation: glam::Quat::IDENTITY,

@@ -3,7 +3,17 @@ use glow::{Context, HasContext, NativeTexture};
 use std::rc::Rc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TextureId(pub usize);
+pub struct TextureId(usize);
+
+impl TextureId {
+    pub(crate) fn new(id: usize) -> Self {
+        Self(id)
+    }
+
+    pub fn index(&self) -> usize {
+        self.0
+    }
+}
 
 pub struct Texture {
     gl: Rc<Context>,

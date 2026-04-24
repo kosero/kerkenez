@@ -2,7 +2,17 @@ use crate::renderer::color::Color;
 use crate::renderer::texture::TextureId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MaterialId(pub usize);
+pub struct MaterialId(usize);
+
+impl MaterialId {
+    pub(crate) fn new(id: usize) -> Self {
+        Self(id)
+    }
+
+    pub fn index(&self) -> usize {
+        self.0
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Material {

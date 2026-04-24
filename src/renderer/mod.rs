@@ -185,14 +185,14 @@ impl RenderState {
             texture_path_index: HashMap::new(),
             state_cache: GlStateCache::new(),
             post_processing,
-            white_texture_id: TextureId(0), // Placeholder
+            white_texture_id: TextureId::new(0), // Placeholder
             uniforms,
         };
 
         // Create default white texture
         let white_tex = Texture::white(&state.gl);
         state.textures.push(white_tex);
-        state.white_texture_id = TextureId(0); // It's the first texture in the list
+        state.white_texture_id = TextureId::new(0); // It's the first texture in the list
         // RH: camera at +Z looking toward -Z (origin)
         state.camera.set_position(glam::vec3(0.0, 0.0, 10.0));
         state.camera.update();
@@ -203,7 +203,10 @@ impl RenderState {
         state.register_mesh(MeshType::Cube, &Mesh::cube())?;
 
         // Register default material
-        state.register_material(MaterialId(0), Material::new("default", Color::WHITE, None));
+        state.register_material(
+            MaterialId::new(0),
+            Material::new("default", Color::WHITE, None),
+        );
 
         Ok(state)
     }
@@ -214,7 +217,7 @@ impl RenderState {
             return id;
         }
         let texture = Texture::load(&self.gl, path);
-        let id = TextureId(self.textures.len());
+        let id = TextureId::new(self.textures.len());
         self.textures.push(texture);
         self.texture_path_index.insert(path.to_string(), id);
         id
@@ -357,7 +360,7 @@ impl RenderState {
                 );
 
                 if let Some(tex_id) = &material.albedo_texture {
-                    self.textures[tex_id.0].bind_at(
+                    self.textures[tex_id.index()].bind_at(
                         &self.gl,
                         self.uniforms.albedo_texture.as_ref(),
                         0,

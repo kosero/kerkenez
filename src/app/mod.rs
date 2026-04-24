@@ -71,7 +71,7 @@ impl App {
     }
 
     pub fn add_material(&mut self, material: Material) -> MaterialId {
-        let id = MaterialId(self.next_material_id);
+        let id = MaterialId::new(self.next_material_id);
         self.next_material_id += 1;
         self.register_material(id, material);
         id
