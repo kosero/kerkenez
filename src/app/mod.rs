@@ -105,8 +105,8 @@ struct Runner<'a, F> {
 
 impl<'a, F: FnMut(&mut App)> ApplicationHandler for Runner<'a, F> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let vert_src = include_str!("../../shaders/vertex.vert");
-        let frag_src = include_str!("../../shaders/fragment.frag");
+        let vert_src = include_str!("../../shaders/geometry.vert");
+        let frag_src = include_str!("../../shaders/geometry.frag");
 
         let mut state = RenderState::new(
             event_loop,

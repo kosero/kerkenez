@@ -210,8 +210,8 @@ impl PostProcessManager {
         );
         let triangle = FullscreenTriangle::new(gl);
 
-        let vert_src = include_str!("../../../shaders/screen_quad.vert");
-        let _frag_src = include_str!("../../../shaders/post_fragment.frag");
+        let vert_src = include_str!("../../../shaders/fullscreen.vert");
+        let _frag_src = include_str!("../../../shaders/composite.frag");
         let ssao_frag_src = include_str!("../../../shaders/ssao.frag");
         let ssao_blur_frag_src = include_str!("../../../shaders/ssao_blur.frag");
 
@@ -269,8 +269,8 @@ impl PostProcessManager {
         let defines = ShaderDefines::from_settings(&self.settings);
 
         if !self.variants.contains_key(&defines) {
-            let vert_src = include_str!("../../../shaders/screen_quad.vert");
-            let frag_src = include_str!("../../../shaders/post_fragment.frag");
+            let vert_src = include_str!("../../../shaders/fullscreen.vert");
+            let frag_src = include_str!("../../../shaders/composite.frag");
 
             let mut define_str = format!("#define DEBUG_MODE {}\n", defines.debug_mode);
             if defines.ssao_enabled {
