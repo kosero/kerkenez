@@ -1,4 +1,5 @@
 pub mod buffer;
+pub mod color;
 pub mod context;
 pub mod draw_command;
 pub mod light;
@@ -8,6 +9,7 @@ pub mod post_processing;
 pub mod shader;
 pub mod texture;
 
+use self::color::Color;
 use self::draw_command::DrawCommand;
 use self::light::SceneLights;
 use self::material::{Material, MaterialId};
@@ -156,10 +158,7 @@ impl RenderState {
         state.register_mesh(MeshType::Cube, &Mesh::cube());
 
         // Register default material
-        state.register_material(
-            MaterialId(0),
-            Material::new("default", glam::Vec4::ONE, None),
-        );
+        state.register_material(MaterialId(0), Material::new("default", Color::WHITE, None));
 
         state
     }
@@ -284,7 +283,7 @@ impl RenderState {
                 .or_default()
                 .push(Instance {
                     model_matrix,
-                    tint: cmd.tint,
+                    tint: cmd.tint.to_vec4(),
                 });
         }
         groups
@@ -305,10 +304,10 @@ impl RenderState {
 
                 self.gl.uniform_4_f32(
                     albedo_color_loc.as_ref(),
-                    material.albedo_color.x,
-                    material.albedo_color.y,
-                    material.albedo_color.z,
-                    material.albedo_color.w,
+                    material.albedo_color.r,
+                    material.albedo_color.g,
+                    material.albedo_color.b,
+                    material.albedo_color.a,
                 );
 
                 if let Some(tex_id) = &material.albedo_texture {

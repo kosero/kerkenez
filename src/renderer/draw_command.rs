@@ -1,4 +1,5 @@
 use crate::mesh::MeshType;
+use crate::renderer::color::Color;
 
 pub struct DrawCommand {
     pub mesh_type: MeshType,
@@ -6,7 +7,7 @@ pub struct DrawCommand {
     pub position: glam::Vec3,
     pub scale: glam::Vec3,
     pub rotation: glam::Quat,
-    pub tint: glam::Vec4,
+    pub tint: Color,
 }
 
 impl DrawCommand {
@@ -17,7 +18,7 @@ impl DrawCommand {
             position: glam::Vec3::ZERO,
             scale: glam::Vec3::ONE,
             rotation: glam::Quat::IDENTITY,
-            tint: glam::Vec4::ONE,
+            tint: Color::WHITE,
         }
     }
 
@@ -59,7 +60,12 @@ impl DrawCommand {
     }
 
     pub fn tint(mut self, r: f32, g: f32, b: f32, a: f32) -> Self {
-        self.tint = glam::vec4(r, g, b, a);
+        self.tint = Color::rgba(r, g, b, a).to_linear();
+        self
+    }
+
+    pub fn color(mut self, color: Color) -> Self {
+        self.tint = color.to_linear();
         self
     }
 }

@@ -43,7 +43,12 @@ impl App {
     }
 
     pub fn set_ambient_light(&mut self, r: f32, g: f32, b: f32, intensity: f32) {
-        self.lights.ambient_color = glam::vec3(r, g, b);
+        self.lights.ambient_color = crate::renderer::color::Color::rgb(r, g, b).to_linear();
+        self.lights.ambient_intensity = intensity;
+    }
+
+    pub fn set_ambient_color(&mut self, color: crate::renderer::color::Color, intensity: f32) {
+        self.lights.ambient_color = color.to_linear();
         self.lights.ambient_intensity = intensity;
     }
 

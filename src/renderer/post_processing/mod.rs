@@ -472,9 +472,9 @@ impl PostProcessingManager {
 
                 gl.uniform_3_f32(
                     variant.uniforms.ambient_color.as_ref(),
-                    lights.ambient_color.x,
-                    lights.ambient_color.y,
-                    lights.ambient_color.z,
+                    lights.ambient_color.r,
+                    lights.ambient_color.g,
+                    lights.ambient_color.b,
                 );
                 gl.uniform_1_f32(
                     variant.uniforms.ambient_intensity.as_ref(),
@@ -490,9 +490,9 @@ impl PostProcessingManager {
                     );
                     gl.uniform_3_f32(
                         variant.uniforms.dir_light_color.as_ref(),
-                        dir.color.x,
-                        dir.color.y,
-                        dir.color.z,
+                        dir.color.r,
+                        dir.color.g,
+                        dir.color.b,
                     );
                     gl.uniform_1_f32(variant.uniforms.dir_light_intensity.as_ref(), dir.intensity);
                     gl.uniform_1_i32(variant.uniforms.dir_light_enabled.as_ref(), 1);
@@ -516,9 +516,9 @@ impl PostProcessingManager {
                     );
                     gl.uniform_3_f32(
                         variant.uniforms.point_light_colors[i].as_ref(),
-                        light.color.x,
-                        light.color.y,
-                        light.color.z,
+                        light.color.r,
+                        light.color.g,
+                        light.color.b,
                     );
                     gl.uniform_1_f32(
                         variant.uniforms.point_light_intensities[i].as_ref(),
