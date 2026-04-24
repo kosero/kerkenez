@@ -1,25 +1,17 @@
 pub mod config;
 
 use self::config::Config;
-use crate::{
-    behaviour::{self, Behaviour},
-    input::keyboard::KeyboardState,
-    renderer::RenderState,
-};
+use crate::renderer::RenderState;
 use winit::{
     application::ApplicationHandler,
-    event::{KeyEvent, WindowEvent},
+    event::WindowEvent,
     event_loop::{ActiveEventLoop, EventLoop},
-    keyboard::PhysicalKey,
     window::WindowId,
 };
 
 pub struct App {
     config: Config,
     state: Option<RenderState>,
-    keyboard: KeyboardState,
-    behaviours: Vec<Box<dyn Behaviour>>,
-    started: bool,
 }
 
 impl App {
@@ -31,15 +23,7 @@ impl App {
                 height,
             },
             state: None,
-            keyboard: KeyboardState::new(),
-            behaviours: Vec::new(),
-            started: false,
         }
-    }
-
-    pub fn with_behaviour(mut self, behaviour: impl Behaviour + 'static) -> Self {
-        self.behaviours.push(Box::new(behaviour));
-        self
     }
 
     pub fn run(mut self) {
@@ -84,47 +68,15 @@ impl ApplicationHandler for App {
         };
         match event {
             WindowEvent::CloseRequested => {
-                for b in self.behaviours.iter_mut() {
-                    b.exit();
-                }
                 event_loop.exit()
             }
             WindowEvent::RedrawRequested => state.render(),
             WindowEvent::Resized(size) => state.resize(size.width, size.height),
-
-            WindowEvent::KeyboardInput {
-                event:
-                    KeyEvent {
-                        physical_key: PhysicalKey::Code(kc),
-                        state,
-                        ..
-                    },
-                ..
-            } => {
-                self.keyboard.process(kc, state);
-            }
             _ => (),
         }
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        let ctx = behaviour::Context {
-            keyboard: &self.keyboard,
-        };
-
-        if !self.started {
-            for b in self.behaviours.iter_mut() {
-                b.init(&ctx);
-            }
-            self.started = true;
-        }
-
-        for b in self.behaviours.iter_mut() {
-            b.update(&ctx);
-        }
-
-        self.keyboard.end_frame();
-
         if let Some(state) = self.state.as_mut() {
             state.request_redraw();
         }
