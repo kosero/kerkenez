@@ -200,33 +200,34 @@ void main() {
         lighting = albedo;
     }
 
-    // Apply SSAO to the final lighting (stylized/stronger effect)
+    // Apply SSAO to the final lighting
     lighting *= ao_final;
 
+    // 1. Exposure (on Linear HDR)
     vec3 color = lighting * u_Exposure;
 
-    // 4. Fog
+    // 2. Fog (on Linear HDR)
     #ifdef ENABLE_FOG
         color = ApplyFog(color, linearDepth);
     #endif
 
-    // 5. Tone Mapping
+    // 3. Tone Mapping (Linear to LDR)
     #ifdef ENABLE_TONEMAP
         color = ACESFilm(color);
     #endif
 
-    // 6. Color Grading
+    // 4. Gamma Correction (LDR to sRGB)
+    color = pow(max(color, vec3(0.0)), vec3(1.0 / 2.2));
+
+    // 5. Color Grading (in sRGB space)
     color = ApplyColorGrading(color);
 
-    // 7. Vignette
+    // 6. Vignette (in sRGB space)
     #ifdef ENABLE_VIGNETTE
         color = ApplyVignette(color, v_TexCoords);
     #endif
 
-    // 8. Gamma Correction
-    color = pow(max(color, vec3(0.0)), vec3(1.0 / 2.2));
-
-    // 9. Dithering
+    // 7. Dithering (Final step)
     color = ApplyDithering(color, v_TexCoords);
 
     FragColor = vec4(color, 1.0);

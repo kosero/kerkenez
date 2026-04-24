@@ -52,6 +52,12 @@ impl App {
         self.lights.ambient_intensity = intensity;
     }
 
+    pub fn set_fog(&mut self, color: crate::renderer::color::Color, density: f32) {
+        self.post_processing_settings.fog_enabled = true;
+        self.post_processing_settings.fog_color = color.to_linear();
+        self.post_processing_settings.fog_density = density;
+    }
+
     pub fn set_directional_light(&mut self, light: DirectionalLight) {
         self.lights.directional = Some(light);
     }

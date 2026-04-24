@@ -538,9 +538,9 @@ impl PostProcessingManager {
                     );
                     gl.uniform_3_f32(
                         gl.get_uniform_location(program, "u_FogColor").as_ref(),
-                        settings.fog_color[0],
-                        settings.fog_color[1],
-                        settings.fog_color[2],
+                        settings.fog_color.r,
+                        settings.fog_color.g,
+                        settings.fog_color.b,
                     );
                 }
 

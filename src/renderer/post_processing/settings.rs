@@ -1,3 +1,5 @@
+use crate::renderer::color::Color;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DebugMode {
     None = 0,
@@ -20,7 +22,7 @@ pub struct PostProcessingSettings {
     // Fog
     pub fog_enabled: bool,
     pub fog_density: f32,
-    pub fog_color: [f32; 3],
+    pub fog_color: Color,
 
     // Tone Mapping & Color Grading
     pub tone_mapping_enabled: bool,
@@ -47,7 +49,7 @@ impl Default for PostProcessingSettings {
 
             fog_enabled: true,
             fog_density: 0.02,
-            fog_color: [0.1, 0.1, 0.1],
+            fog_color: Color::rgb(0.1, 0.1, 0.1),
 
             tone_mapping_enabled: true,
             exposure: 1.0,
