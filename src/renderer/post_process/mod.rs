@@ -5,8 +5,8 @@ pub mod settings;
 use self::fbo::{FrameBuffer, RenderTarget};
 use self::fullscreen_triangle::FullscreenTriangle;
 use self::settings::{DebugMode, PostProcessSettings};
+use crate::renderer::light::{MAX_POINT_LIGHTS, SceneLights};
 use crate::renderer::shader;
-use crate::renderer::light::{SceneLights, MAX_POINT_LIGHTS};
 use glow::{Context, HasContext};
 
 struct UniformCache {
@@ -29,7 +29,7 @@ struct UniformCache {
     vignette_enabled: Option<glow::UniformLocation>,
     ssao_texture: Option<glow::UniformLocation>,
     vignette_intensity: Option<glow::UniformLocation>,
-    
+
     // Lighting
     camera_pos: Option<glow::UniformLocation>,
     ambient_color: Option<glow::UniformLocation>,
@@ -39,7 +39,7 @@ struct UniformCache {
     dir_light_intensity: Option<glow::UniformLocation>,
     dir_light_enabled: Option<glow::UniformLocation>,
     point_lights_count: Option<glow::UniformLocation>,
-    
+
     // Arrays of struct fields are looked up individually
     point_light_positions: Vec<Option<glow::UniformLocation>>,
     point_light_colors: Vec<Option<glow::UniformLocation>>,
@@ -90,7 +90,7 @@ impl UniformCache {
                 vignette_enabled: gl.get_uniform_location(program, "u_VignetteEnabled"),
                 ssao_texture: gl.get_uniform_location(program, "u_SSAOTexture"),
                 vignette_intensity: gl.get_uniform_location(program, "u_VignetteIntensity"),
-                
+
                 camera_pos: gl.get_uniform_location(program, "u_CameraPos"),
                 ambient_color: gl.get_uniform_location(program, "u_AmbientColor"),
                 ambient_intensity: gl.get_uniform_location(program, "u_AmbientIntensity"),
@@ -99,11 +99,27 @@ impl UniformCache {
                 dir_light_intensity: gl.get_uniform_location(program, "u_DirLight.intensity"),
                 dir_light_enabled: gl.get_uniform_location(program, "u_DirLight.enabled"),
                 point_lights_count: gl.get_uniform_location(program, "u_PointLightsCount"),
-                
-                point_light_positions: (0..MAX_POINT_LIGHTS).map(|i| gl.get_uniform_location(program, &format!("u_PointLights[{}].position", i))).collect(),
-                point_light_colors: (0..MAX_POINT_LIGHTS).map(|i| gl.get_uniform_location(program, &format!("u_PointLights[{}].color", i))).collect(),
-                point_light_intensities: (0..MAX_POINT_LIGHTS).map(|i| gl.get_uniform_location(program, &format!("u_PointLights[{}].intensity", i))).collect(),
-                point_light_radii: (0..MAX_POINT_LIGHTS).map(|i| gl.get_uniform_location(program, &format!("u_PointLights[{}].radius", i))).collect(),
+
+                point_light_positions: (0..MAX_POINT_LIGHTS)
+                    .map(|i| {
+                        gl.get_uniform_location(program, &format!("u_PointLights[{}].position", i))
+                    })
+                    .collect(),
+                point_light_colors: (0..MAX_POINT_LIGHTS)
+                    .map(|i| {
+                        gl.get_uniform_location(program, &format!("u_PointLights[{}].color", i))
+                    })
+                    .collect(),
+                point_light_intensities: (0..MAX_POINT_LIGHTS)
+                    .map(|i| {
+                        gl.get_uniform_location(program, &format!("u_PointLights[{}].intensity", i))
+                    })
+                    .collect(),
+                point_light_radii: (0..MAX_POINT_LIGHTS)
+                    .map(|i| {
+                        gl.get_uniform_location(program, &format!("u_PointLights[{}].radius", i))
+                    })
+                    .collect(),
             }
         }
     }
@@ -271,14 +287,18 @@ impl PostProcessManager {
         gl: &Context,
         window_width: i32,
         window_height: i32,
-        near: f32,
-        far: f32,
-        inv_vp: glam::Mat4,
-        camera_pos: glam::Vec3,
+        camera: &crate::camera::Camera,
         lights: &SceneLights,
     ) {
         if self.settings.enabled {
             self.fbo.unbind(gl);
+
+            let (near, far) = match camera.projection() {
+                crate::camera::CameraProjection::Perspective(p) => (p.near, p.far),
+                crate::camera::CameraProjection::Orthographic(o) => (o.near, o.far),
+            };
+            let inv_vp = camera.view_projection_matrix().inverse();
+            let camera_pos = camera.position();
 
             // 1. SSAO Generation Pass
             if self.settings.ssao_enabled {
@@ -424,7 +444,7 @@ impl PostProcessManager {
                     variant.uniforms.ambient_intensity.as_ref(),
                     lights.ambient_intensity,
                 );
-                
+
                 if let Some(dir_light) = &lights.directional {
                     gl.uniform_1_i32(variant.uniforms.dir_light_enabled.as_ref(), 1);
                     gl.uniform_3_f32(
@@ -448,8 +468,16 @@ impl PostProcessManager {
                 }
 
                 let point_lights_len = lights.point_lights.len().min(MAX_POINT_LIGHTS);
-                gl.uniform_1_i32(variant.uniforms.point_lights_count.as_ref(), point_lights_len as i32);
-                for (i, light) in lights.point_lights.iter().take(MAX_POINT_LIGHTS).enumerate() {
+                gl.uniform_1_i32(
+                    variant.uniforms.point_lights_count.as_ref(),
+                    point_lights_len as i32,
+                );
+                for (i, light) in lights
+                    .point_lights
+                    .iter()
+                    .take(MAX_POINT_LIGHTS)
+                    .enumerate()
+                {
                     gl.uniform_3_f32(
                         variant.uniforms.point_light_positions[i].as_ref(),
                         light.position.x,
@@ -466,10 +494,7 @@ impl PostProcessManager {
                         variant.uniforms.point_light_intensities[i].as_ref(),
                         light.intensity,
                     );
-                    gl.uniform_1_f32(
-                        variant.uniforms.point_light_radii[i].as_ref(),
-                        light.radius,
-                    );
+                    gl.uniform_1_f32(variant.uniforms.point_light_radii[i].as_ref(), light.radius);
                 }
 
                 // SSAO enabled flag for main shader

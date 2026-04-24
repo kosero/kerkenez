@@ -1,9 +1,9 @@
 pub mod config;
 
 use self::config::Config;
-use crate::mesh::DrawCall;
-use crate::renderer::light::{DirectionalLight, PointLight, SceneLights};
 use crate::renderer::RenderState;
+use crate::renderer::draw_command::DrawCommand;
+use crate::renderer::light::{DirectionalLight, PointLight, SceneLights};
 
 use crate::renderer::material::{Material, MaterialId};
 use winit::{
@@ -16,7 +16,7 @@ use winit::{
 pub struct App {
     config: Config,
     state: Option<RenderState>,
-    render_queue: Vec<DrawCall>,
+    render_queue: Vec<DrawCommand>,
     materials: Vec<(MaterialId, Material)>,
     next_material_id: usize,
     pub lights: SceneLights,
@@ -73,7 +73,7 @@ impl App {
         }
     }
 
-    pub fn draw(&mut self, command: crate::mesh::DrawCall) {
+    pub fn draw(&mut self, command: DrawCommand) {
         self.render_queue.push(command);
     }
 

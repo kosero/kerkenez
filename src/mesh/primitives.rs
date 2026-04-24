@@ -1,4 +1,5 @@
 use crate::mesh::Vertex;
+use crate::renderer::draw_command::DrawCommand;
 
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
@@ -205,24 +206,24 @@ impl Mesh {
 pub struct Square;
 impl Square {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> DrawCall {
-        DrawCall::new(MeshType::Square)
+    pub fn new() -> DrawCommand {
+        DrawCommand::new(MeshType::Square)
     }
 }
 
 pub struct Triangle;
 impl Triangle {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> DrawCall {
-        DrawCall::new(MeshType::Triangle)
+    pub fn new() -> DrawCommand {
+        DrawCommand::new(MeshType::Triangle)
     }
 }
 
 pub struct Cube;
 impl Cube {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> DrawCall {
-        DrawCall::new(MeshType::Cube)
+    pub fn new() -> DrawCommand {
+        DrawCommand::new(MeshType::Cube)
     }
 }
 
@@ -231,58 +232,4 @@ pub enum MeshType {
     Square,
     Triangle,
     Cube,
-}
-
-/// Describes a single object to be drawn: mesh type, transform, material,
-/// and color. Collected into batches by the renderer.
-pub struct DrawCall {
-    pub mesh_type: MeshType,
-    pub material: crate::renderer::material::MaterialId,
-    pub position: glam::Vec3,
-    pub scale: glam::Vec3,
-    pub rotation: glam::Quat,
-    pub color: glam::Vec4,
-}
-
-impl DrawCall {
-    pub fn new(mesh_type: MeshType) -> Self {
-        Self {
-            mesh_type,
-            material: crate::renderer::material::MaterialId(0),
-            position: glam::Vec3::ZERO,
-            scale: glam::Vec3::ONE,
-            rotation: glam::Quat::IDENTITY,
-            color: glam::Vec4::ONE,
-        }
-    }
-
-    pub fn material(mut self, id: crate::renderer::material::MaterialId) -> Self {
-        self.material = id;
-        self
-    }
-
-    pub fn at(mut self, x: f32, y: f32, z: f32) -> Self {
-        self.position = glam::vec3(x, y, z);
-        self
-    }
-
-    pub fn rotate(mut self, x: f32, y: f32, z: f32) -> Self {
-        self.rotation = glam::Quat::from_euler(glam::EulerRot::XYZ, x, y, z);
-        self
-    }
-
-    pub fn scale(mut self, s: f32) -> Self {
-        self.scale = glam::Vec3::splat(s);
-        self
-    }
-
-    pub fn scale_xyz(mut self, x: f32, y: f32, z: f32) -> Self {
-        self.scale = glam::vec3(x, y, z);
-        self
-    }
-
-    pub fn color(mut self, r: f32, g: f32, b: f32, a: f32) -> Self {
-        self.color = glam::vec4(r, g, b, a);
-        self
-    }
 }

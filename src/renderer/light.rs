@@ -48,6 +48,12 @@ pub struct PointLight {
     pub radius: f32,
 }
 
+impl Default for PointLight {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PointLight {
     pub fn new() -> Self {
         Self {

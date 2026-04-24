@@ -1,5 +1,6 @@
 pub mod buffer;
 pub mod context;
+pub mod draw_command;
 pub mod light;
 pub mod material;
 pub mod pipeline;
@@ -7,10 +8,11 @@ pub mod post_process;
 pub mod shader;
 pub mod texture;
 
+use self::draw_command::DrawCommand;
 use self::light::SceneLights;
 use self::material::{Material, MaterialId};
 use crate::camera::Camera;
-use crate::mesh::{DrawCall, Instance, Mesh, MeshType};
+use crate::mesh::{Instance, Mesh, MeshType};
 use glow::{Context, HasContext};
 use glutin::context::PossiblyCurrentContext;
 use glutin::prelude::GlSurface;
@@ -200,7 +202,7 @@ impl RenderState {
         }
     }
 
-    pub fn render(&mut self, render_queue: &[DrawCall], lights: &SceneLights) {
+    pub fn render(&mut self, render_queue: &[DrawCommand], lights: &SceneLights) {
         let size = self.ctx.window.inner_size();
         if size.width > 0
             && size.height > 0
@@ -226,12 +228,6 @@ impl RenderState {
                 self.draw_batch(mesh_type, material_id, &instances);
             }
 
-            // End post processing and draw to screen
-            let (near, far) = match self.camera.projection() {
-                crate::camera::CameraProjection::Perspective(p) => (p.near, p.far),
-                crate::camera::CameraProjection::Orthographic(o) => (o.near, o.far),
-            };
-
             // Post-process pass invalidates state
             self.state_cache.invalidate();
 
@@ -239,10 +235,7 @@ impl RenderState {
                 &self.gl,
                 self.ctx.window.inner_size().width as i32,
                 self.ctx.window.inner_size().height as i32,
-                near,
-                far,
-                self.camera.view_projection_matrix().inverse(),
-                self.camera.position(),
+                &self.camera,
                 lights,
             );
 
@@ -272,7 +265,7 @@ impl RenderState {
 
     fn prepare_batches(
         &self,
-        render_queue: &[DrawCall],
+        render_queue: &[DrawCommand],
     ) -> HashMap<(MeshType, MaterialId), Vec<Instance>> {
         let mut groups: HashMap<(MeshType, MaterialId), Vec<Instance>> = HashMap::new();
         for cmd in render_queue {
