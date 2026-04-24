@@ -20,7 +20,8 @@ pub struct App {
     materials: Vec<(MaterialId, Material)>,
     next_material_id: usize,
     pub lights: SceneLights,
-    pub post_process_settings: crate::renderer::post_process::settings::PostProcessSettings,
+    pub post_processing_settings:
+        crate::renderer::post_processing::settings::PostProcessingSettings,
 }
 
 impl App {
@@ -36,8 +37,8 @@ impl App {
             materials: Vec::new(),
             next_material_id: 1,
             lights: SceneLights::default(),
-            post_process_settings:
-                crate::renderer::post_process::settings::PostProcessSettings::default(),
+            post_processing_settings:
+                crate::renderer::post_processing::settings::PostProcessingSettings::default(),
         }
     }
 
@@ -81,10 +82,10 @@ impl App {
         self.state.as_mut().map(|s| &mut s.camera)
     }
 
-    pub fn post_process_mut(
+    pub fn post_processing_mut(
         &mut self,
-    ) -> Option<&mut crate::renderer::post_process::PostProcessManager> {
-        self.state.as_mut().map(|s| &mut s.post_process)
+    ) -> Option<&mut crate::renderer::post_processing::PostProcessingManager> {
+        self.state.as_mut().map(|s| &mut s.post_processing)
     }
 
     pub fn run<F>(&mut self, update: F)
@@ -122,7 +123,7 @@ impl<'a, F: FnMut(&mut App)> ApplicationHandler for Runner<'a, F> {
             state.register_material(id, material);
         }
 
-        state.post_process.settings = self.app.post_process_settings.clone();
+        state.post_processing.settings = self.app.post_processing_settings.clone();
         self.app.state = Some(state);
     }
 
@@ -144,10 +145,10 @@ impl<'a, F: FnMut(&mut App)> ApplicationHandler for Runner<'a, F> {
         if self.app.state.is_some() {
             // Clear the render queue for the new frame
             self.app.render_queue.clear();
-            
+
             // Run user update logic
             (self.update)(self.app);
-            
+
             // Request redraw with the new queue
             if let Some(state) = self.app.state.as_mut() {
                 state.request_redraw();

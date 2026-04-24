@@ -9,7 +9,7 @@ pub use crate::renderer::{
     draw_command::DrawCommand,
     light::{DirectionalLight, PointLight, SceneLights},
     material::{Material, MaterialId},
-    post_process::settings::DebugMode,
+    post_processing::settings::DebugMode,
 };
 
 pub use glam::{Mat4, Vec3, Vec4, vec3, vec4};

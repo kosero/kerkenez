@@ -1,12 +1,11 @@
 use glow::{Context, HasContext, PixelUnpackData};
 
 /// G-Buffer backed framebuffer with Multiple Render Targets (MRT).
-///
 /// Attachments:
 /// - COLOR_ATTACHMENT0: Albedo (RGBA16F)
 /// - COLOR_ATTACHMENT1: World-space Normal (RGBA16F)
 /// - DEPTH_ATTACHMENT:  Depth (DEPTH_COMPONENT32F)
-pub struct FrameBuffer {
+pub struct GBuffer {
     pub fbo: glow::Framebuffer,
     pub color_texture: glow::Texture,
     pub normal_texture: glow::Texture,
@@ -15,7 +14,7 @@ pub struct FrameBuffer {
     pub height: i32,
 }
 
-impl FrameBuffer {
+impl GBuffer {
     pub fn new(gl: &Context, width: i32, height: i32) -> Self {
         unsafe {
             let fbo = gl

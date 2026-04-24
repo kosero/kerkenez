@@ -4,7 +4,7 @@ pub mod draw_command;
 pub mod light;
 pub mod material;
 pub mod pipeline;
-pub mod post_process;
+pub mod post_processing;
 pub mod shader;
 pub mod texture;
 
@@ -94,7 +94,7 @@ pub struct RenderState {
     texture_path_index: HashMap<String, TextureId>,
 
     state_cache: GlStateCache,
-    pub post_process: post_process::PostProcessManager,
+    pub post_processing: post_processing::PostProcessingManager,
 }
 
 impl RenderState {
@@ -117,7 +117,7 @@ impl RenderState {
         };
 
         let physical_size = window.inner_size();
-        let post_process = post_process::PostProcessManager::new(
+        let post_processing = post_processing::PostProcessingManager::new(
             &gl,
             physical_size.width as i32,
             physical_size.height as i32,
@@ -137,7 +137,7 @@ impl RenderState {
             textures: Vec::new(),
             texture_path_index: HashMap::new(),
             state_cache: GlStateCache::new(),
-            post_process,
+            post_processing,
         };
         // RH: camera at +Z looking toward -Z (origin)
         state.camera.set_position(glam::vec3(0.0, 0.0, 10.0));
@@ -203,8 +203,8 @@ impl RenderState {
         let size = self.ctx.window.inner_size();
         if size.width > 0
             && size.height > 0
-            && (size.width != self.post_process.width() as u32
-                || size.height != self.post_process.height() as u32)
+            && (size.width != self.post_processing.width() as u32
+                || size.height != self.post_processing.height() as u32)
         {
             self.resize(size.width, size.height);
         }
@@ -212,7 +212,7 @@ impl RenderState {
         self.camera.update();
 
         unsafe {
-            self.post_process.begin(&self.gl);
+            self.post_processing.begin(&self.gl);
 
             // Post-process pass changes GL state — invalidate cache
             self.state_cache.invalidate();
@@ -228,7 +228,7 @@ impl RenderState {
             // Post-process pass invalidates state
             self.state_cache.invalidate();
 
-            self.post_process.end(
+            self.post_processing.end(
                 &self.gl,
                 self.ctx.window.inner_size().width as i32,
                 self.ctx.window.inner_size().height as i32,
@@ -294,8 +294,14 @@ impl RenderState {
             ) {
                 let has_texture_loc = self.gl.get_uniform_location(self.program, "u_HasTexture");
                 let albedo_color_loc = self.gl.get_uniform_location(self.program, "u_AlbedoColor");
-                
-                self.gl.uniform_4_f32(albedo_color_loc.as_ref(), material.albedo_color.x, material.albedo_color.y, material.albedo_color.z, material.albedo_color.w);
+
+                self.gl.uniform_4_f32(
+                    albedo_color_loc.as_ref(),
+                    material.albedo_color.x,
+                    material.albedo_color.y,
+                    material.albedo_color.z,
+                    material.albedo_color.w,
+                );
 
                 if let Some(tex_id) = &material.albedo_texture {
                     self.textures[tex_id.0].bind(&self.gl, self.program, 0);
@@ -338,7 +344,7 @@ impl RenderState {
                 self.gl.viewport(0, 0, width as i32, height as i32);
             }
             self.camera.resize(width as f32, height as f32);
-            self.post_process
+            self.post_processing
                 .resize(&self.gl, width as i32, height as i32);
         }
     }

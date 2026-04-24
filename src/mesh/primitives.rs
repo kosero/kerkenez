@@ -1,6 +1,5 @@
 use crate::mesh::Vertex;
 
-
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
@@ -202,8 +201,6 @@ impl Mesh {
         Self::new(vertices, indices)
     }
 }
-
-
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MeshType {

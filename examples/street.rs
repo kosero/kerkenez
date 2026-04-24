@@ -18,8 +18,8 @@ fn main() {
                 .scale_xyz(12.0, 0.1, 80.0)
                 .tint(0.15, 0.15, 0.15, 1.0),
         );
-    
-            // Road markings (dashed line)
+
+        // Road markings (dashed line)
         for i in 0..20 {
             let z = 5.0 - (i as f32) * 4.0;
             app.draw(
@@ -28,8 +28,8 @@ fn main() {
                     .scale_xyz(0.2, 0.05, 2.0)
                     .tint(0.9, 0.9, 0.9, 1.0),
             );
-    }
-    
+        }
+
         // Sidewalks
         app.draw(
             DrawCommand::cube()
@@ -43,7 +43,7 @@ fn main() {
                 .scale_xyz(3.0, 0.2, 80.0)
                 .tint(0.3, 0.3, 0.3, 1.0),
         );
-    
+
         // Buildings
         let building_colors = [
             (0.6, 0.3, 0.2), // Brick red
@@ -52,19 +52,19 @@ fn main() {
             (0.7, 0.6, 0.5), // Brown
             (0.9, 0.9, 0.9), // White
         ];
-    
+
         for side in 0..2 {
             let sign = if side == 0 { -1.0 } else { 1.0 };
             let x_pos = sign * 11.5;
-    
+
             for i in 0..12 {
                 let z = 5.0 - (i as f32) * 6.0;
                 let color_idx = (i + side) % building_colors.len();
                 let (r, g, b) = building_colors[color_idx];
-    
+
                 // Randomize height a bit
                 let height = 10.0 + ((i * 3) % 5) as f32 * 2.5;
-    
+
                 // Building main block
                 app.draw(
                     DrawCommand::cube()
@@ -72,7 +72,7 @@ fn main() {
                         .scale_xyz(5.0, height, 5.0)
                         .tint(r, g, b, 1.0),
                 );
-    
+
                 // Windows
                 let floors = (height / 2.5) as i32;
                 for f in 1..floors {
@@ -80,7 +80,7 @@ fn main() {
                     for w in 0..2 {
                         let wx = x_pos - sign * 2.5; // slightly protruding to show glass
                         let wz = z - 1.5 + (w as f32) * 3.0;
-    
+
                         // Window glass
                         app.draw(
                             DrawCommand::cube()
@@ -88,7 +88,7 @@ fn main() {
                                 .scale_xyz(0.1, 1.2, 1.0)
                                 .tint(0.5, 0.8, 1.0, 1.0), // Light blue glass
                         );
-    
+
                         // Balcony (only some floors)
                         if (f + i as i32) % 2 == 0 {
                             app.draw(
@@ -97,10 +97,10 @@ fn main() {
                                     .scale_xyz(1.4, 0.2, 1.6)
                                     .tint(0.2, 0.2, 0.2, 1.0),
                             );
+                        }
                     }
                 }
-            }
-    
+
                 // Shop at ground floor
                 app.draw(
                     DrawCommand::cube()
@@ -108,9 +108,9 @@ fn main() {
                         .scale_xyz(0.2, 2.0, 4.0)
                         .tint(0.05, 0.05, 0.05, 1.0), // Dark glass front
                 );
+            }
         }
-    }
-    
+
         // A car
         // Body
         app.draw(
@@ -135,9 +135,9 @@ fn main() {
                         .scale_xyz(0.4, 0.6, 0.6)
                         .tint(0.05, 0.05, 0.05, 1.0),
                 );
+            }
         }
-    }
-    
+
         // A truck on the other side
         app.draw(
             DrawCommand::cube()
@@ -151,7 +151,7 @@ fn main() {
                 .scale_xyz(2.5, 1.8, 2.0)
                 .tint(0.9, 0.9, 0.9, 1.0), // White cabin
         );
-    
+
         // Street lights
         for i in 0..6 {
             let z = 2.0 - (i as f32) * 12.0;
@@ -178,9 +178,9 @@ fn main() {
                         .scale_xyz(0.4, 0.1, 0.4)
                         .tint(1.0, 1.0, 0.6, 1.0), // Yellow light
                 );
+            }
         }
-    }
-    
+
         // Some trees (cubist style) on the sidewalk
         for i in 0..8 {
             let z = 0.0 - (i as f32) * 9.0;
@@ -206,8 +206,7 @@ fn main() {
                         .scale_xyz(1.0, 1.0, 1.0)
                         .tint(0.3, 0.7, 0.3, 1.0),
                 );
+            }
         }
-    }
-    
     });
 }

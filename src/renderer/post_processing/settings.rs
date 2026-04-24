@@ -7,7 +7,7 @@ pub enum DebugMode {
 }
 
 #[derive(Debug, Clone)]
-pub struct PostProcessSettings {
+pub struct PostProcessingSettings {
     pub enabled: bool,
     pub debug_mode: DebugMode,
 
@@ -34,7 +34,7 @@ pub struct PostProcessSettings {
     pub vignette_intensity: f32,
 }
 
-impl Default for PostProcessSettings {
+impl Default for PostProcessingSettings {
     fn default() -> Self {
         Self {
             enabled: true,

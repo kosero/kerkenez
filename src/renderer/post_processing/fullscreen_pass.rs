@@ -1,10 +1,10 @@
 use glow::{Context, HasContext};
 
-pub struct FullscreenTriangle {
+pub struct FullscreenPass {
     vao: glow::VertexArray,
 }
 
-impl FullscreenTriangle {
+impl FullscreenPass {
     pub fn new(gl: &Context) -> Self {
         unsafe {
             let vao = gl.create_vertex_array().expect("Failed to create VAO");

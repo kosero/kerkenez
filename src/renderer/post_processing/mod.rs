@@ -1,10 +1,10 @@
-pub mod fbo;
-pub mod fullscreen_triangle;
+pub mod fullscreen_pass;
+pub mod render_target;
 pub mod settings;
 
-use self::fbo::{FrameBuffer, RenderTarget};
-use self::fullscreen_triangle::FullscreenTriangle;
-use self::settings::PostProcessSettings;
+use self::fullscreen_pass::FullscreenPass;
+use self::render_target::{GBuffer, RenderTarget};
+use self::settings::PostProcessingSettings;
 use crate::renderer::light::{MAX_POINT_LIGHTS, SceneLights};
 use crate::renderer::shader;
 use glow::{Context, HasContext};
@@ -20,7 +20,7 @@ struct ShaderDefines {
 }
 
 impl ShaderDefines {
-    fn from_settings(settings: &PostProcessSettings) -> Self {
+    fn from_settings(settings: &PostProcessingSettings) -> Self {
         Self {
             debug_mode: settings.debug_mode as i32,
             ssao_enabled: settings.ssao_enabled,
@@ -172,11 +172,11 @@ struct ProgramVariant {
     uniforms: UniformCache,
 }
 
-pub struct PostProcessManager {
-    fbo: FrameBuffer,
+pub struct PostProcessingManager {
+    fbo: GBuffer,
     ssao_target: RenderTarget,
     ssao_blur_target: RenderTarget,
-    triangle: FullscreenTriangle,
+    triangle: FullscreenPass,
 
     ssao_program: glow::Program,
     ssao_uniforms: SsaoUniforms,
@@ -185,12 +185,12 @@ pub struct PostProcessManager {
     ssao_blur_uniforms: SsaoBlurUniforms,
 
     variants: HashMap<ShaderDefines, ProgramVariant>,
-    pub settings: PostProcessSettings,
+    pub settings: PostProcessingSettings,
 }
 
-impl PostProcessManager {
+impl PostProcessingManager {
     pub fn new(gl: &Context, width: i32, height: i32) -> Self {
-        let fbo = FrameBuffer::new(gl, width, height);
+        let fbo = GBuffer::new(gl, width, height);
         // SSAO textures only need a single channel. We use R16F for precision, though R8 could work.
         let ssao_target = RenderTarget::new(
             gl,
@@ -208,7 +208,7 @@ impl PostProcessManager {
             glow::RED,
             glow::HALF_FLOAT,
         );
-        let triangle = FullscreenTriangle::new(gl);
+        let triangle = FullscreenPass::new(gl);
 
         let vert_src = include_str!("../../../shaders/fullscreen.vert");
         let _frag_src = include_str!("../../../shaders/composite.frag");
@@ -242,7 +242,7 @@ impl PostProcessManager {
             ssao_blur_program,
             ssao_blur_uniforms,
             variants,
-            settings: PostProcessSettings::default(),
+            settings: PostProcessingSettings::default(),
         }
     }
 
@@ -356,9 +356,18 @@ impl PostProcessManager {
                         window_height as f32,
                     );
 
-                    gl.uniform_1_f32(self.ssao_uniforms.ssao_radius.as_ref(), self.settings.ssao_radius);
-                    gl.uniform_1_f32(self.ssao_uniforms.ssao_intensity.as_ref(), self.settings.ssao_intensity);
-                    gl.uniform_1_f32(self.ssao_uniforms.ssao_bias.as_ref(), self.settings.ssao_bias);
+                    gl.uniform_1_f32(
+                        self.ssao_uniforms.ssao_radius.as_ref(),
+                        self.settings.ssao_radius,
+                    );
+                    gl.uniform_1_f32(
+                        self.ssao_uniforms.ssao_intensity.as_ref(),
+                        self.settings.ssao_intensity,
+                    );
+                    gl.uniform_1_f32(
+                        self.ssao_uniforms.ssao_bias.as_ref(),
+                        self.settings.ssao_bias,
+                    );
 
                     gl.disable(glow::DEPTH_TEST);
                     self.triangle.draw(gl);
@@ -473,10 +482,7 @@ impl PostProcessManager {
                         dir.color.y,
                         dir.color.z,
                     );
-                    gl.uniform_1_f32(
-                        variant.uniforms.dir_light_intensity.as_ref(),
-                        dir.intensity,
-                    );
+                    gl.uniform_1_f32(variant.uniforms.dir_light_intensity.as_ref(), dir.intensity);
                     gl.uniform_1_i32(variant.uniforms.dir_light_enabled.as_ref(), 1);
                 } else {
                     gl.uniform_1_i32(variant.uniforms.dir_light_enabled.as_ref(), 0);
