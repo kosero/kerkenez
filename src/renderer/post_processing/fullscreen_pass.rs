@@ -1,9 +1,10 @@
+use crate::error::EngineError;
 use glow::{Context, HasContext};
 use std::rc::Rc;
 
 pub struct FullscreenPass {
     gl: Rc<Context>,
-    vao: glow::VertexArray,
+    pub vao: glow::VertexArray,
 }
 
 impl Drop for FullscreenPass {
@@ -15,13 +16,15 @@ impl Drop for FullscreenPass {
 }
 
 impl FullscreenPass {
-    pub fn new(gl: &Rc<Context>) -> Self {
+    pub fn new(gl: &Rc<Context>) -> Result<Self, EngineError> {
         unsafe {
-            let vao = gl.create_vertex_array().expect("Failed to create VAO");
-            Self {
+            let vao = gl
+                .create_vertex_array()
+                .map_err(EngineError::ResourceCreationError)?;
+            Ok(Self {
                 gl: gl.clone(),
                 vao,
-            }
+            })
         }
     }
 

@@ -1,3 +1,4 @@
+use crate::error::EngineError;
 use glow::{Context, HasContext, PixelUnpackData};
 use std::rc::Rc;
 
@@ -28,15 +29,17 @@ impl Drop for GBuffer {
 }
 
 impl GBuffer {
-    pub fn new(gl: &Rc<Context>, width: i32, height: i32) -> Self {
+    pub fn new(gl: &Rc<Context>, width: i32, height: i32) -> Result<Self, EngineError> {
         unsafe {
             let fbo = gl
                 .create_framebuffer()
-                .expect("Failed to create framebuffer");
+                .map_err(EngineError::ResourceCreationError)?;
             gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
 
             // --- RT0: HDR Albedo (RGBA16F) ---
-            let color_texture = gl.create_texture().expect("Failed to create color texture");
+            let color_texture = gl
+                .create_texture()
+                .map_err(EngineError::ResourceCreationError)?;
             gl.bind_texture(glow::TEXTURE_2D, Some(color_texture));
             gl.tex_image_2d(
                 glow::TEXTURE_2D,
@@ -80,7 +83,7 @@ impl GBuffer {
             // --- RT1: World-space Normal (RGBA16F) ---
             let normal_texture = gl
                 .create_texture()
-                .expect("Failed to create normal texture");
+                .map_err(EngineError::ResourceCreationError)?;
             gl.bind_texture(glow::TEXTURE_2D, Some(normal_texture));
             gl.tex_image_2d(
                 glow::TEXTURE_2D,
@@ -123,7 +126,9 @@ impl GBuffer {
             );
 
             // --- Depth attachment (DEPTH_COMPONENT32F) ---
-            let depth_texture = gl.create_texture().expect("Failed to create depth texture");
+            let depth_texture = gl
+                .create_texture()
+                .map_err(EngineError::ResourceCreationError)?;
             gl.bind_texture(glow::TEXTURE_2D, Some(depth_texture));
             gl.tex_image_2d(
                 glow::TEXTURE_2D,
@@ -168,12 +173,14 @@ impl GBuffer {
             gl.draw_buffers(&[glow::COLOR_ATTACHMENT0, glow::COLOR_ATTACHMENT1]);
 
             if gl.check_framebuffer_status(glow::FRAMEBUFFER) != glow::FRAMEBUFFER_COMPLETE {
-                panic!("G-Buffer Framebuffer is not complete!");
+                return Err(EngineError::FramebufferIncomplete(
+                    "G-Buffer Framebuffer is not complete!".to_string(),
+                ));
             }
 
             gl.bind_framebuffer(glow::FRAMEBUFFER, None);
 
-            Self {
+            Ok(Self {
                 gl: gl.clone(),
                 fbo,
                 color_texture,
@@ -181,7 +188,7 @@ impl GBuffer {
                 depth_texture,
                 width,
                 height,
-            }
+            })
         }
     }
 
@@ -280,16 +287,16 @@ impl RenderTarget {
         internal_format: i32,
         format: u32,
         data_type: u32,
-    ) -> Self {
+    ) -> Result<Self, EngineError> {
         unsafe {
             let fbo = gl
                 .create_framebuffer()
-                .expect("Failed to create RenderTarget FBO");
+                .map_err(EngineError::ResourceCreationError)?;
             gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
 
             let color_texture = gl
                 .create_texture()
-                .expect("Failed to create RenderTarget texture");
+                .map_err(EngineError::ResourceCreationError)?;
             gl.bind_texture(glow::TEXTURE_2D, Some(color_texture));
             gl.tex_image_2d(
                 glow::TEXTURE_2D,
@@ -332,18 +339,20 @@ impl RenderTarget {
             );
 
             if gl.check_framebuffer_status(glow::FRAMEBUFFER) != glow::FRAMEBUFFER_COMPLETE {
-                panic!("RenderTarget Framebuffer is not complete!");
+                return Err(EngineError::FramebufferIncomplete(
+                    "RenderTarget Framebuffer is not complete!".to_string(),
+                ));
             }
 
             gl.bind_framebuffer(glow::FRAMEBUFFER, None);
 
-            Self {
+            Ok(Self {
                 gl: gl.clone(),
                 fbo,
                 color_texture,
                 width,
                 height,
-            }
+            })
         }
     }
 

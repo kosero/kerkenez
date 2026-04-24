@@ -1,6 +1,12 @@
+use crate::error::EngineError;
 use glow::{Context, HasContext, Program};
 
-pub fn create_shaders(gl: &Context, program: Program, vert_src: &str, frag_src: &str) {
+pub fn create_shaders(
+    gl: &Context,
+    program: Program,
+    vert_src: &str,
+    frag_src: &str,
+) -> Result<(), EngineError> {
     let shader_srcs = [
         (glow::VERTEX_SHADER, vert_src),
         (glow::FRAGMENT_SHADER, frag_src),
@@ -12,11 +18,18 @@ pub fn create_shaders(gl: &Context, program: Program, vert_src: &str, frag_src: 
         for (shader_type, src) in &shader_srcs {
             let shader = gl
                 .create_shader(*shader_type)
-                .expect("Cannot create shader");
+                .map_err(EngineError::ResourceCreationError)?;
             gl.shader_source(shader, src);
             gl.compile_shader(shader);
             if !gl.get_shader_compile_status(shader) {
-                panic!("{}", gl.get_shader_info_log(shader));
+                let info = gl.get_shader_info_log(shader);
+                // Clean up before returning
+                for s in &shaders {
+                    gl.detach_shader(program, *s);
+                    gl.delete_shader(*s);
+                }
+                gl.delete_shader(shader);
+                return Err(EngineError::ShaderCompileError(info));
             }
             gl.attach_shader(program, shader);
             shaders.push(shader);
@@ -24,7 +37,13 @@ pub fn create_shaders(gl: &Context, program: Program, vert_src: &str, frag_src: 
 
         gl.link_program(program);
         if !gl.get_program_link_status(program) {
-            panic!("{}", gl.get_program_info_log(program));
+            let info = gl.get_program_info_log(program);
+            // Clean up before returning
+            for s in shaders {
+                gl.detach_shader(program, s);
+                gl.delete_shader(s);
+            }
+            return Err(EngineError::ShaderLinkError(info));
         }
 
         for shader in shaders {
@@ -32,4 +51,6 @@ pub fn create_shaders(gl: &Context, program: Program, vert_src: &str, frag_src: 
             gl.delete_shader(shader);
         }
     }
+
+    Ok(())
 }

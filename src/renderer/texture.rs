@@ -1,3 +1,4 @@
+use crate::error::EngineError;
 use glow::{Context, HasContext, NativeTexture};
 use std::rc::Rc;
 
@@ -21,24 +22,53 @@ impl Drop for Texture {
 
 impl Texture {
     pub fn load(gl: &Rc<Context>, path: &str) -> Self {
-        let img = image::open(path)
-            .unwrap_or_else(|e| panic!("Texture not loaded '{path}': {e}"))
-            .flipv()
-            .into_rgba8();
-        let (width, height) = img.dimensions();
-        let pixels = img.into_raw();
+        match image::open(path) {
+            Ok(img) => {
+                let img = img.flipv().into_rgba8();
+                let (width, height) = img.dimensions();
+                let pixels = img.into_raw();
+                Self::from_pixels(gl, width, height, &pixels).unwrap_or_else(|_| {
+                    eprintln!(
+                        "Failed to create GPU texture for '{}'. Using fallback.",
+                        path
+                    );
+                    Self::error_fallback(gl)
+                })
+            }
+            Err(e) => {
+                eprintln!(
+                    "Failed to load texture '{}': {}. Using fallback magenta texture.",
+                    path, e
+                );
+                Self::error_fallback(gl)
+            }
+        }
+    }
 
-        Self::from_pixels(gl, width, height, &pixels)
+    pub fn error_fallback(gl: &Rc<Context>) -> Self {
+        let pixels = vec![255, 0, 255, 255]; // Magenta
+        Self::from_pixels(gl, 1, 1, &pixels).unwrap_or_else(|_| {
+            panic!("Critical: Failed to create fallback texture");
+        })
     }
 
     pub fn white(gl: &Rc<Context>) -> Self {
         let pixels = vec![255, 255, 255, 255];
-        Self::from_pixels(gl, 1, 1, &pixels)
+        Self::from_pixels(gl, 1, 1, &pixels).unwrap_or_else(|_| {
+            panic!("Critical: Failed to create white texture");
+        })
     }
 
-    pub fn from_pixels(gl: &Rc<Context>, width: u32, height: u32, pixels: &[u8]) -> Self {
+    pub fn from_pixels(
+        gl: &Rc<Context>,
+        width: u32,
+        height: u32,
+        pixels: &[u8],
+    ) -> Result<Self, EngineError> {
         let id = unsafe {
-            let texture = gl.create_texture().expect("Texture not created");
+            let texture = gl
+                .create_texture()
+                .map_err(EngineError::ResourceCreationError)?;
             gl.bind_texture(glow::TEXTURE_2D, Some(texture));
             gl.tex_image_2d(
                 glow::TEXTURE_2D,
@@ -67,12 +97,12 @@ impl Texture {
             texture
         };
 
-        Self {
+        Ok(Self {
             gl: gl.clone(),
             id,
             width,
             height,
-        }
+        })
     }
 
     /// Bind this texture to the given texture unit using a pre-cached uniform location.

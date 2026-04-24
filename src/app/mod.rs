@@ -124,14 +124,21 @@ impl<'a, F: FnMut(&mut App)> ApplicationHandler for Runner<'a, F> {
         let vert_src = include_str!("../../shaders/geometry.vert");
         let frag_src = include_str!("../../shaders/geometry.frag");
 
-        let mut state = RenderState::new(
+        let mut state = match RenderState::new(
             event_loop,
             &self.app.config.title,
             self.app.config.width,
             self.app.config.height,
             vert_src,
             frag_src,
-        );
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("CRITICAL ERROR: Failed to initialize renderer: {}", e);
+                event_loop.exit();
+                return;
+            }
+        };
 
         // Register queued materials
         for (id, material) in self.app.materials.drain(..) {

@@ -5,6 +5,7 @@ pub mod settings;
 use self::fullscreen_pass::FullscreenPass;
 use self::render_target::{GBuffer, RenderTarget};
 use self::settings::PostProcessingSettings;
+use crate::error::EngineError;
 use crate::renderer::light::{MAX_POINT_LIGHTS, SceneLights};
 use crate::renderer::shader;
 use glow::{Context, HasContext};
@@ -213,8 +214,8 @@ impl Drop for PostProcessingManager {
 }
 
 impl PostProcessingManager {
-    pub fn new(gl: &Rc<Context>, width: i32, height: i32) -> Self {
-        let fbo = GBuffer::new(gl, width, height);
+    pub fn new(gl: &Rc<Context>, width: i32, height: i32) -> Result<Self, EngineError> {
+        let fbo = GBuffer::new(gl, width, height)?;
         // SSAO at half resolution for performance
         let half_w = (width / 2).max(1);
         let half_h = (height / 2).max(1);
@@ -226,7 +227,7 @@ impl PostProcessingManager {
             glow::R16F as i32,
             glow::RED,
             glow::HALF_FLOAT,
-        );
+        )?;
         let ssao_blur_target = RenderTarget::new(
             gl,
             half_w,
@@ -234,11 +235,10 @@ impl PostProcessingManager {
             glow::R16F as i32,
             glow::RED,
             glow::HALF_FLOAT,
-        );
-        let triangle = FullscreenPass::new(gl);
+        )?;
+        let triangle = FullscreenPass::new(gl)?;
 
         let vert_src = include_str!("../../../shaders/fullscreen.vert");
-        let _frag_src = include_str!("../../../shaders/composite.frag");
         let ssao_frag_src = include_str!("../../../shaders/ssao.frag");
         let ssao_blur_frag_src = include_str!("../../../shaders/ssao_blur.frag");
 
@@ -256,13 +256,15 @@ impl PostProcessingManager {
         let ssao_blur_frag_final = inject_common(ssao_blur_frag_src);
 
         let (ssao_program, ssao_blur_program) = unsafe {
-            let sp = gl.create_program().expect("Failed to create ssao program");
-            shader::create_shaders(gl, sp, vert_src, &ssao_frag_final);
+            let sp = gl
+                .create_program()
+                .map_err(EngineError::ResourceCreationError)?;
+            shader::create_shaders(gl, sp, vert_src, &ssao_frag_final)?;
 
             let sbp = gl
                 .create_program()
-                .expect("Failed to create ssao blur program");
-            shader::create_shaders(gl, sbp, vert_src, &ssao_blur_frag_final);
+                .map_err(EngineError::ResourceCreationError)?;
+            shader::create_shaders(gl, sbp, vert_src, &ssao_blur_frag_final)?;
 
             (sp, sbp)
         };
@@ -270,7 +272,7 @@ impl PostProcessingManager {
         let ssao_uniforms = SsaoUniforms::new(gl, ssao_program);
         let ssao_blur_uniforms = SsaoBlurUniforms::new(gl, ssao_blur_program);
 
-        Self {
+        Ok(Self {
             gl: gl.clone(),
             fbo,
             ssao_target,
@@ -282,7 +284,7 @@ impl PostProcessingManager {
             ssao_blur_uniforms,
             variants: HashMap::new(),
             settings: PostProcessingSettings::default(),
-        }
+        })
     }
 
     pub fn width(&self) -> i32 {
@@ -304,10 +306,10 @@ impl PostProcessingManager {
         }
     }
 
-    fn get_variant(&mut self, gl: &Context) -> &ProgramVariant {
+    fn get_variant(&mut self, gl: &Context) -> Result<&ProgramVariant, EngineError> {
         let defines = ShaderDefines::from_settings(&self.settings);
 
-        self.variants.entry(defines).or_insert_with(|| {
+        if let std::collections::hash_map::Entry::Vacant(e) = self.variants.entry(defines) {
             let vert_src = include_str!("../../../shaders/fullscreen.vert");
             let frag_src = include_str!("../../../shaders/composite.frag");
             let common_src = include_str!("../../../shaders/common.glsl");
@@ -336,12 +338,14 @@ impl PostProcessingManager {
             unsafe {
                 let program = gl
                     .create_program()
-                    .expect("Failed to create post-process program variant");
-                shader::create_shaders(gl, program, vert_src, &frag_src_modified);
+                    .map_err(EngineError::ResourceCreationError)?;
+                shader::create_shaders(gl, program, vert_src, &frag_src_modified)?;
                 let uniforms = UniformCache::new(gl, program);
-                ProgramVariant { program, uniforms }
+                e.insert(ProgramVariant { program, uniforms });
             }
-        })
+        }
+
+        Ok(self.variants.get(&defines).unwrap())
     }
 
     /// Unbind the G-Buffer FBO and draw the fullscreen pass with all post-processing.
@@ -466,7 +470,16 @@ impl PostProcessingManager {
             let normal_tex = self.fbo.normal_texture;
             let ssao_blur_tex = self.ssao_target.color_texture;
 
-            let variant = self.get_variant(gl);
+            let variant = match self.get_variant(gl) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!(
+                        "Failed to get post-process variant: {}. Skipping compose pass.",
+                        e
+                    );
+                    return;
+                }
+            };
             let program = variant.program;
 
             unsafe {

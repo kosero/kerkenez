@@ -14,6 +14,7 @@ use self::draw_command::DrawCommand;
 use self::light::SceneLights;
 use self::material::{Material, MaterialId};
 use crate::camera::Camera;
+use crate::error::EngineError;
 use crate::mesh::{Instance, Mesh, MeshType};
 use glow::{Context, HasContext};
 use glutin::context::PossiblyCurrentContext;
@@ -147,13 +148,15 @@ impl RenderState {
         height: i32,
         vert_src: &str,
         frag_src: &str,
-    ) -> Self {
+    ) -> Result<Self, EngineError> {
         let (gl, gl_surface, gl_context, window) =
             context::init_context(event_loop, title, width, height);
 
         let program = unsafe {
-            let program = gl.create_program().unwrap();
-            shader::create_shaders(&gl, program, vert_src, frag_src);
+            let program = gl
+                .create_program()
+                .map_err(EngineError::ResourceCreationError)?;
+            shader::create_shaders(&gl, program, vert_src, frag_src)?;
             gl.use_program(Some(program));
             program
         };
@@ -163,7 +166,7 @@ impl RenderState {
             &gl,
             physical_size.width as i32,
             physical_size.height as i32,
-        );
+        )?;
 
         let uniforms = MainUniforms::new(&gl, program);
 
@@ -195,14 +198,14 @@ impl RenderState {
         state.camera.update();
 
         // Pre-register basic meshes
-        state.register_mesh(MeshType::Square, &Mesh::square());
-        state.register_mesh(MeshType::Triangle, &Mesh::triangle());
-        state.register_mesh(MeshType::Cube, &Mesh::cube());
+        state.register_mesh(MeshType::Square, &Mesh::square())?;
+        state.register_mesh(MeshType::Triangle, &Mesh::triangle())?;
+        state.register_mesh(MeshType::Cube, &Mesh::cube())?;
 
         // Register default material
         state.register_material(MaterialId(0), Material::new("default", Color::WHITE, None));
 
-        state
+        Ok(state)
     }
 
     /// Load a texture by path (deduplicated) and return its handle.
@@ -227,13 +230,13 @@ impl RenderState {
         self.materials.insert(id, material);
     }
 
-    fn register_mesh(&mut self, mesh_type: MeshType, mesh: &Mesh) {
-        let (vao, vbo, ebo) = buffer::setup_mesh_buffers(&self.gl, mesh);
+    fn register_mesh(&mut self, mesh_type: MeshType, mesh: &Mesh) -> Result<(), EngineError> {
+        let (vao, vbo, ebo) = buffer::setup_mesh_buffers(&self.gl, mesh)?;
         unsafe {
             self.gl.bind_vertex_array(Some(vao));
 
             pipeline::setup_pipeline(&self.gl);
-            let instance_buffer = buffer::setup_instance_buffer(&self.gl);
+            let instance_buffer = buffer::setup_instance_buffer(&self.gl)?;
             pipeline::setup_instancing(&self.gl);
 
             self.batches.insert(
@@ -248,6 +251,7 @@ impl RenderState {
                 },
             );
         }
+        Ok(())
     }
 
     pub fn render(&mut self, render_queue: &[DrawCommand], lights: &SceneLights, time: f32) {
@@ -383,12 +387,8 @@ impl RenderState {
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
-        if width > 0 && height > 0 {
-            self.ctx.gl_surface.resize(
-                &self.ctx.gl_context,
-                NonZeroU32::new(width).unwrap(),
-                NonZeroU32::new(height).unwrap(),
-            );
+        if let (Some(w), Some(h)) = (NonZeroU32::new(width), NonZeroU32::new(height)) {
+            self.ctx.gl_surface.resize(&self.ctx.gl_context, w, h);
             unsafe {
                 self.gl.viewport(0, 0, width as i32, height as i32);
             }

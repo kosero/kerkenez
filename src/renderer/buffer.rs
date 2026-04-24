@@ -1,15 +1,20 @@
+use crate::error::EngineError;
 use crate::mesh::Mesh;
 use glow::{Context, HasContext};
 
 pub fn setup_mesh_buffers(
     gl: &Context,
     mesh: &Mesh,
-) -> (glow::VertexArray, glow::Buffer, glow::Buffer) {
+) -> Result<(glow::VertexArray, glow::Buffer, glow::Buffer), EngineError> {
     unsafe {
-        let vao = gl.create_vertex_array().unwrap();
+        let vao = gl
+            .create_vertex_array()
+            .map_err(EngineError::ResourceCreationError)?;
         gl.bind_vertex_array(Some(vao));
 
-        let vbo = gl.create_buffer().unwrap();
+        let vbo = gl
+            .create_buffer()
+            .map_err(EngineError::ResourceCreationError)?;
         gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
 
         gl.buffer_data_u8_slice(
@@ -18,7 +23,9 @@ pub fn setup_mesh_buffers(
             glow::STATIC_DRAW,
         );
 
-        let ebo = gl.create_buffer().unwrap();
+        let ebo = gl
+            .create_buffer()
+            .map_err(EngineError::ResourceCreationError)?;
         gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(ebo));
 
         gl.buffer_data_u8_slice(
@@ -27,14 +34,16 @@ pub fn setup_mesh_buffers(
             glow::STATIC_DRAW,
         );
 
-        (vao, vbo, ebo)
+        Ok((vao, vbo, ebo))
     }
 }
 
-pub fn setup_instance_buffer(gl: &Context) -> glow::Buffer {
+pub fn setup_instance_buffer(gl: &Context) -> Result<glow::Buffer, EngineError> {
     unsafe {
-        let buffer = gl.create_buffer().unwrap();
+        let buffer = gl
+            .create_buffer()
+            .map_err(EngineError::ResourceCreationError)?;
         gl.bind_buffer(glow::ARRAY_BUFFER, Some(buffer));
-        buffer
+        Ok(buffer)
     }
 }
