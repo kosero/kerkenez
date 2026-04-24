@@ -10,6 +10,7 @@ impl Texture {
     pub fn load(gl: &Context, path: &str) -> Self {
         let img = image::open(path)
             .unwrap_or_else(|e| panic!("Texture not loaded '{path}': {e}"))
+            .flipv()
             .into_rgba8();
         let (width, height) = img.dimensions();
         let pixels = img.into_raw();
