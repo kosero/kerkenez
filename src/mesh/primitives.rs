@@ -15,18 +15,22 @@ impl Mesh {
             Vertex {
                 position: [0.5, 0.5, 0.0],
                 tex_coords: [1.0, 1.0],
+                normal: [0.0, 0.0, 1.0],
             }, // Top Right
             Vertex {
                 position: [0.5, -0.5, 0.0],
                 tex_coords: [1.0, 0.0],
+                normal: [0.0, 0.0, 1.0],
             }, // Bottom Right
             Vertex {
                 position: [-0.5, -0.5, 0.0],
                 tex_coords: [0.0, 0.0],
+                normal: [0.0, 0.0, 1.0],
             }, // Bottom Left
             Vertex {
                 position: [-0.5, 0.5, 0.0],
                 tex_coords: [0.0, 1.0],
+                normal: [0.0, 0.0, 1.0],
             }, // Top Left
         ];
         let indices = vec![0, 1, 3, 1, 2, 3];
@@ -38,14 +42,17 @@ impl Mesh {
             Vertex {
                 position: [0.0, 0.5, 0.0],
                 tex_coords: [0.5, 1.0],
+                normal: [0.0, 0.0, 1.0],
             },
             Vertex {
                 position: [-0.5, -0.5, 0.0],
                 tex_coords: [0.0, 0.0],
+                normal: [0.0, 0.0, 1.0],
             },
             Vertex {
                 position: [0.5, -0.5, 0.0],
                 tex_coords: [1.0, 0.0],
+                normal: [0.0, 0.0, 1.0],
             },
         ];
         let indices = vec![0, 1, 2];
@@ -54,107 +61,131 @@ impl Mesh {
 
     pub fn cube() -> Self {
         let vertices = vec![
-            // Front face
+            // Front face (normal: +Z)
             Vertex {
                 position: [-0.5, -0.5, 0.5],
                 tex_coords: [0.0, 1.0],
+                normal: [0.0, 0.0, 1.0],
             },
             Vertex {
                 position: [0.5, -0.5, 0.5],
                 tex_coords: [1.0, 1.0],
+                normal: [0.0, 0.0, 1.0],
             },
             Vertex {
                 position: [0.5, 0.5, 0.5],
                 tex_coords: [1.0, 0.0],
+                normal: [0.0, 0.0, 1.0],
             },
             Vertex {
                 position: [-0.5, 0.5, 0.5],
                 tex_coords: [0.0, 0.0],
+                normal: [0.0, 0.0, 1.0],
             },
-            // Back face
+            // Back face (normal: -Z)
             Vertex {
                 position: [-0.5, -0.5, -0.5],
                 tex_coords: [1.0, 1.0],
+                normal: [0.0, 0.0, -1.0],
             },
             Vertex {
                 position: [0.5, -0.5, -0.5],
                 tex_coords: [0.0, 1.0],
+                normal: [0.0, 0.0, -1.0],
             },
             Vertex {
                 position: [0.5, 0.5, -0.5],
                 tex_coords: [0.0, 0.0],
+                normal: [0.0, 0.0, -1.0],
             },
             Vertex {
                 position: [-0.5, 0.5, -0.5],
                 tex_coords: [1.0, 0.0],
+                normal: [0.0, 0.0, -1.0],
             },
-            // Top face
+            // Top face (normal: +Y)
             Vertex {
                 position: [-0.5, 0.5, 0.5],
                 tex_coords: [0.0, 1.0],
+                normal: [0.0, 1.0, 0.0],
             },
             Vertex {
                 position: [0.5, 0.5, 0.5],
                 tex_coords: [1.0, 1.0],
+                normal: [0.0, 1.0, 0.0],
             },
             Vertex {
                 position: [0.5, 0.5, -0.5],
                 tex_coords: [1.0, 0.0],
+                normal: [0.0, 1.0, 0.0],
             },
             Vertex {
                 position: [-0.5, 0.5, -0.5],
                 tex_coords: [0.0, 0.0],
+                normal: [0.0, 1.0, 0.0],
             },
-            // Bottom face
+            // Bottom face (normal: -Y)
             Vertex {
                 position: [-0.5, -0.5, 0.5],
                 tex_coords: [0.0, 0.0],
+                normal: [0.0, -1.0, 0.0],
             },
             Vertex {
                 position: [0.5, -0.5, 0.5],
                 tex_coords: [1.0, 0.0],
+                normal: [0.0, -1.0, 0.0],
             },
             Vertex {
                 position: [0.5, -0.5, -0.5],
                 tex_coords: [1.0, 1.0],
+                normal: [0.0, -1.0, 0.0],
             },
             Vertex {
                 position: [-0.5, -0.5, -0.5],
                 tex_coords: [0.0, 1.0],
+                normal: [0.0, -1.0, 0.0],
             },
-            // Right face
+            // Right face (normal: +X)
             Vertex {
                 position: [0.5, -0.5, 0.5],
                 tex_coords: [0.0, 1.0],
+                normal: [1.0, 0.0, 0.0],
             },
             Vertex {
                 position: [0.5, 0.5, 0.5],
                 tex_coords: [0.0, 0.0],
+                normal: [1.0, 0.0, 0.0],
             },
             Vertex {
                 position: [0.5, 0.5, -0.5],
                 tex_coords: [1.0, 0.0],
+                normal: [1.0, 0.0, 0.0],
             },
             Vertex {
                 position: [0.5, -0.5, -0.5],
                 tex_coords: [1.0, 1.0],
+                normal: [1.0, 0.0, 0.0],
             },
-            // Left face
+            // Left face (normal: -X)
             Vertex {
                 position: [-0.5, -0.5, 0.5],
                 tex_coords: [1.0, 1.0],
+                normal: [-1.0, 0.0, 0.0],
             },
             Vertex {
                 position: [-0.5, 0.5, 0.5],
                 tex_coords: [1.0, 0.0],
+                normal: [-1.0, 0.0, 0.0],
             },
             Vertex {
                 position: [-0.5, 0.5, -0.5],
                 tex_coords: [0.0, 0.0],
+                normal: [-1.0, 0.0, 0.0],
             },
             Vertex {
                 position: [-0.5, -0.5, -0.5],
                 tex_coords: [0.0, 1.0],
+                normal: [-1.0, 0.0, 0.0],
             },
         ];
 

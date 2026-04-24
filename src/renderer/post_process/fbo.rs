@@ -1,8 +1,15 @@
 use glow::{Context, HasContext, PixelUnpackData};
 
+/// G-Buffer backed framebuffer with Multiple Render Targets (MRT).
+///
+/// Attachments:
+/// - COLOR_ATTACHMENT0: Albedo (RGBA16F)
+/// - COLOR_ATTACHMENT1: World-space Normal (RGBA16F)
+/// - DEPTH_ATTACHMENT:  Depth (DEPTH_COMPONENT32F)
 pub struct FrameBuffer {
     pub fbo: glow::Framebuffer,
     pub color_texture: glow::Texture,
+    pub normal_texture: glow::Texture,
     pub depth_texture: glow::Texture,
     pub width: i32,
     pub height: i32,
@@ -16,7 +23,7 @@ impl FrameBuffer {
                 .expect("Failed to create framebuffer");
             gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
 
-            // HDR Color attachment (RGBA16F)
+            // --- RT0: HDR Albedo (RGBA16F) ---
             let color_texture = gl.create_texture().expect("Failed to create color texture");
             gl.bind_texture(glow::TEXTURE_2D, Some(color_texture));
             gl.tex_image_2d(
@@ -58,7 +65,52 @@ impl FrameBuffer {
                 0,
             );
 
-            // Depth attachment (DEPTH_COMPONENT32F)
+            // --- RT1: World-space Normal (RGBA16F) ---
+            let normal_texture = gl
+                .create_texture()
+                .expect("Failed to create normal texture");
+            gl.bind_texture(glow::TEXTURE_2D, Some(normal_texture));
+            gl.tex_image_2d(
+                glow::TEXTURE_2D,
+                0,
+                glow::RGBA16F as i32,
+                width,
+                height,
+                0,
+                glow::RGBA,
+                glow::HALF_FLOAT,
+                PixelUnpackData::Slice(None),
+            );
+            // NEAREST filtering for G-Buffer normals — no cross-surface interpolation
+            gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_MIN_FILTER,
+                glow::NEAREST as i32,
+            );
+            gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_MAG_FILTER,
+                glow::NEAREST as i32,
+            );
+            gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_WRAP_S,
+                glow::CLAMP_TO_EDGE as i32,
+            );
+            gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_WRAP_T,
+                glow::CLAMP_TO_EDGE as i32,
+            );
+            gl.framebuffer_texture_2d(
+                glow::FRAMEBUFFER,
+                glow::COLOR_ATTACHMENT1,
+                glow::TEXTURE_2D,
+                Some(normal_texture),
+                0,
+            );
+
+            // --- Depth attachment (DEPTH_COMPONENT32F) ---
             let depth_texture = gl.create_texture().expect("Failed to create depth texture");
             gl.bind_texture(glow::TEXTURE_2D, Some(depth_texture));
             gl.tex_image_2d(
@@ -100,8 +152,11 @@ impl FrameBuffer {
                 0,
             );
 
+            // Enable MRT: tell OpenGL we're writing to two color attachments
+            gl.draw_buffers(&[glow::COLOR_ATTACHMENT0, glow::COLOR_ATTACHMENT1]);
+
             if gl.check_framebuffer_status(glow::FRAMEBUFFER) != glow::FRAMEBUFFER_COMPLETE {
-                panic!("Framebuffer is not complete!");
+                panic!("G-Buffer Framebuffer is not complete!");
             }
 
             gl.bind_framebuffer(glow::FRAMEBUFFER, None);
@@ -109,6 +164,7 @@ impl FrameBuffer {
             Self {
                 fbo,
                 color_texture,
+                normal_texture,
                 depth_texture,
                 width,
                 height,
@@ -120,6 +176,9 @@ impl FrameBuffer {
         unsafe {
             gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.fbo));
             gl.viewport(0, 0, self.width, self.height);
+            // Re-assert MRT draw buffers (safety: FBO state should persist, but
+            // other code might change it via shared GL context)
+            gl.draw_buffers(&[glow::COLOR_ATTACHMENT0, glow::COLOR_ATTACHMENT1]);
             gl.clear_depth_f32(1.0);
         }
     }
@@ -138,8 +197,22 @@ impl FrameBuffer {
         self.height = height;
 
         unsafe {
-            // Resize color texture
+            // Resize albedo texture
             gl.bind_texture(glow::TEXTURE_2D, Some(self.color_texture));
+            gl.tex_image_2d(
+                glow::TEXTURE_2D,
+                0,
+                glow::RGBA16F as i32,
+                width,
+                height,
+                0,
+                glow::RGBA,
+                glow::HALF_FLOAT,
+                PixelUnpackData::Slice(None),
+            );
+
+            // Resize normal texture
+            gl.bind_texture(glow::TEXTURE_2D, Some(self.normal_texture));
             gl.tex_image_2d(
                 glow::TEXTURE_2D,
                 0,
@@ -172,6 +245,7 @@ impl FrameBuffer {
         unsafe {
             gl.delete_framebuffer(self.fbo);
             gl.delete_texture(self.color_texture);
+            gl.delete_texture(self.normal_texture);
             gl.delete_texture(self.depth_texture);
         }
     }

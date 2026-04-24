@@ -11,6 +11,7 @@ use glow::{Context, HasContext};
 struct UniformCache {
     screen_texture: Option<glow::UniformLocation>,
     depth_texture: Option<glow::UniformLocation>,
+    normal_texture: Option<glow::UniformLocation>,
     near: Option<glow::UniformLocation>,
     far: Option<glow::UniformLocation>,
     inverse_vp: Option<glow::UniformLocation>,
@@ -31,6 +32,7 @@ struct UniformCache {
 
 struct SsaoUniforms {
     depth_texture: Option<glow::UniformLocation>,
+    normal_texture: Option<glow::UniformLocation>,
     near: Option<glow::UniformLocation>,
     far: Option<glow::UniformLocation>,
     inverse_vp: Option<glow::UniformLocation>,
@@ -54,6 +56,7 @@ impl UniformCache {
             Self {
                 screen_texture: gl.get_uniform_location(program, "u_ScreenTexture"),
                 depth_texture: gl.get_uniform_location(program, "u_DepthTexture"),
+                normal_texture: gl.get_uniform_location(program, "u_NormalTexture"),
                 near: gl.get_uniform_location(program, "u_Near"),
                 far: gl.get_uniform_location(program, "u_Far"),
                 inverse_vp: gl.get_uniform_location(program, "u_InverseVP"),
@@ -80,6 +83,7 @@ impl SsaoUniforms {
         unsafe {
             Self {
                 depth_texture: gl.get_uniform_location(program, "u_DepthTexture"),
+                normal_texture: gl.get_uniform_location(program, "u_NormalTexture"),
                 near: gl.get_uniform_location(program, "u_Near"),
                 far: gl.get_uniform_location(program, "u_Far"),
                 inverse_vp: gl.get_uniform_location(program, "u_InverseVP"),
@@ -219,7 +223,7 @@ impl PostProcessManager {
         self.fbo.height
     }
 
-    /// Bind the off-screen FBO so all subsequent draw calls render into it.
+    /// Bind the off-screen G-Buffer FBO so all subsequent draw calls render into it.
     pub fn begin(&self, gl: &Context) {
         if self.settings.enabled {
             self.fbo.bind(gl);
@@ -230,7 +234,7 @@ impl PostProcessManager {
         }
     }
 
-    /// Unbind the FBO and draw the fullscreen pass with all post-processing.
+    /// Unbind the G-Buffer FBO and draw the fullscreen pass with all post-processing.
     pub fn end(
         &self,
         gl: &Context,
@@ -251,9 +255,15 @@ impl PostProcessManager {
 
                     gl.use_program(Some(self.ssao_program));
 
+                    // Depth texture — unit 0
                     gl.active_texture(glow::TEXTURE0);
                     gl.bind_texture(glow::TEXTURE_2D, Some(self.fbo.depth_texture));
                     gl.uniform_1_i32(self.ssao_uniforms.depth_texture.as_ref(), 0);
+
+                    // G-Buffer normal texture — unit 1
+                    gl.active_texture(glow::TEXTURE1);
+                    gl.bind_texture(glow::TEXTURE_2D, Some(self.fbo.normal_texture));
+                    gl.uniform_1_i32(self.ssao_uniforms.normal_texture.as_ref(), 1);
 
                     gl.uniform_1_f32(self.ssao_uniforms.near.as_ref(), near);
                     gl.uniform_1_f32(self.ssao_uniforms.far.as_ref(), far);
@@ -332,7 +342,7 @@ impl PostProcessManager {
 
                 gl.use_program(Some(variant.program));
 
-                // Bind textures
+                // Bind G-Buffer textures
                 gl.active_texture(glow::TEXTURE0);
                 gl.bind_texture(glow::TEXTURE_2D, Some(self.fbo.color_texture));
                 gl.uniform_1_i32(variant.uniforms.screen_texture.as_ref(), 0);
@@ -344,6 +354,11 @@ impl PostProcessManager {
                 gl.active_texture(glow::TEXTURE2);
                 gl.bind_texture(glow::TEXTURE_2D, Some(self.ssao_blur_target.color_texture));
                 gl.uniform_1_i32(variant.uniforms.ssao_texture.as_ref(), 2);
+
+                // G-Buffer normal texture — unit 3
+                gl.active_texture(glow::TEXTURE3);
+                gl.bind_texture(glow::TEXTURE_2D, Some(self.fbo.normal_texture));
+                gl.uniform_1_i32(variant.uniforms.normal_texture.as_ref(), 3);
 
                 // Camera uniforms
                 gl.uniform_1_f32(variant.uniforms.near.as_ref(), near);

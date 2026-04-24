@@ -13,6 +13,10 @@ pub fn setup_pipeline(gl: &Context) {
         gl.vertex_attrib_pointer_f32(1, 2, glow::FLOAT, false, stride, 12);
         gl.enable_vertex_attrib_array(1);
 
+        // location 7: normal (vec3) — G-Buffer
+        gl.vertex_attrib_pointer_f32(7, 3, glow::FLOAT, false, stride, 20);
+        gl.enable_vertex_attrib_array(7);
+
         gl.clear_color(0.1, 0.1, 0.1, 1.0);
     }
 }

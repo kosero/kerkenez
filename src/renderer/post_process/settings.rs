@@ -41,7 +41,7 @@ impl Default for PostProcessSettings {
             debug_mode: DebugMode::None,
 
             ssao_enabled: true,
-            ssao_radius: 0.5,
+            ssao_radius: 0.9,
             ssao_intensity: 1.0,
             ssao_bias: 0.015,
 

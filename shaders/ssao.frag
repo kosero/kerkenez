@@ -4,6 +4,7 @@ in vec2 v_TexCoords;
 out float FragColor;
 
 uniform sampler2D u_DepthTexture;
+uniform sampler2D u_NormalTexture;
 
 uniform float u_Near;
 uniform float u_Far;
@@ -17,6 +18,12 @@ uniform float u_SSAOBias;
 float LinearizeDepth(float depth) {
     float z = depth * 2.0 - 1.0; // NDC
     return (2.0 * u_Near * u_Far) / (u_Far + u_Near - z * (u_Far - u_Near));
+}
+
+vec3 WorldPosFromDepth(vec2 uv, float depth) {
+    vec4 ndc = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+    vec4 wp = u_InverseVP * ndc;
+    return wp.xyz / wp.w;
 }
 
 const int SSAO_SAMPLES = 16;
@@ -39,14 +46,9 @@ void main() {
 
     vec2 texelSize = 1.0 / u_Resolution;
 
-    // Screen-space slope correction to prevent self-shadowing on flat surfaces
-    float depthRight = LinearizeDepth(texture(u_DepthTexture, v_TexCoords + vec2(texelSize.x, 0.0)).r);
-    float depthUp = LinearizeDepth(texture(u_DepthTexture, v_TexCoords + vec2(0.0, texelSize.y)).r);
-    float dDepthX = depthRight - linearDepth;
-    float dDepthY = depthUp - linearDepth;
-
-    if (abs(dDepthX) > 0.5) dDepthX = 0.0;
-    if (abs(dDepthY) > 0.5) dDepthY = 0.0;
+    // G-Buffer normal for hemisphere orientation
+    vec3 normal = normalize(texture(u_NormalTexture, v_TexCoords).rgb);
+    vec3 fragPos = WorldPosFromDepth(v_TexCoords, rawDepth);
 
     float radius = clamp(u_SSAORadius / linearDepth, 0.005, 0.2);
     float noise = Hash(gl_FragCoord.xy * 12.34);
@@ -69,15 +71,20 @@ void main() {
 
         validSamples += 1.0;
 
-        float sampleLin = LinearizeDepth(texture(u_DepthTexture, sampleUV).r);
+        float sampleRawDepth = texture(u_DepthTexture, sampleUV).r;
+        float sampleLin = LinearizeDepth(sampleRawDepth);
+        vec3 samplePos = WorldPosFromDepth(sampleUV, sampleRawDepth);
 
-        // Expected depth if surface was perfectly flat
-        float expectedDepth = linearDepth + dDepthX * (offset.x / texelSize.x) + dDepthY * (offset.y / texelSize.y);
+        // Direction from fragment to sample in world space
+        vec3 sampleDir = samplePos - fragPos;
+        float dist = length(sampleDir);
 
-        float delta = expectedDepth - sampleLin;
+        // Hemisphere check: only count samples on the correct side of the normal
+        float nDotS = max(dot(normal, sampleDir / (dist + 0.0001)), 0.0);
 
+        float delta = linearDepth - sampleLin;
         float rangeCheck = smoothstep(0.0, 1.0, u_SSAORadius / (abs(delta) + 0.01));
-        occlusion += smoothstep(u_SSAOBias, u_SSAOBias * 2.0, delta) * rangeCheck;
+        occlusion += smoothstep(u_SSAOBias, u_SSAOBias * 2.0, delta) * rangeCheck * nDotS;
     }
 
     float ao = 1.0;

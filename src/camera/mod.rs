@@ -15,8 +15,6 @@ pub struct Camera {
     position: Vec3,
     rotation: Quat,
 
-    /// Dirty flag — recalculation only happens once per frame
-    /// when `update()` is called, not on every setter call.
     dirty: bool,
 
     view_matrix: Mat4,
@@ -121,8 +119,6 @@ impl Camera {
         self.view_projection_matrix
     }
 
-    /// Call once per frame, before rendering. Recalculates matrices
-    /// only if any transform property changed since the last update.
     pub fn update(&mut self) {
         if self.dirty {
             self.recalculate_matrices();

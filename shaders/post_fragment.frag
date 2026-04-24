@@ -3,9 +3,10 @@
 in vec2 v_TexCoords;
 out vec4 FragColor;
 
-// Textures
-uniform sampler2D u_ScreenTexture;
-uniform sampler2D u_DepthTexture;
+// G-Buffer Textures
+uniform sampler2D u_ScreenTexture;   // RT0: Albedo
+uniform sampler2D u_DepthTexture;    // Depth
+uniform sampler2D u_NormalTexture;   // RT1: World-space Normal
 uniform sampler2D u_SSAOTexture;
 
 // Camera
@@ -54,26 +55,10 @@ vec3 WorldPosFromDepth(vec2 uv, float depth) {
     return wp.xyz / wp.w;
 }
 
-//  Normal Reconstruction
+//  G-Buffer Normal Fetch (replaces depth-based reconstruction)
 
-vec3 ReconstructNormal(vec2 uv) {
-    vec2 texel = 1.0 / u_Resolution;
-
-    float dc = texture(u_DepthTexture, uv).r;
-    float dl = texture(u_DepthTexture, uv - vec2(texel.x, 0.0)).r;
-    float dr = texture(u_DepthTexture, uv + vec2(texel.x, 0.0)).r;
-    float db = texture(u_DepthTexture, uv - vec2(0.0, texel.y)).r;
-    float dt = texture(u_DepthTexture, uv + vec2(0.0, texel.y)).r;
-
-    vec3 center = WorldPosFromDepth(uv, dc);
-
-    vec3 ddx = (abs(dl - dc) < abs(dr - dc))
-        ? center - WorldPosFromDepth(uv - vec2(texel.x, 0.0), dl) : WorldPosFromDepth(uv + vec2(texel.x, 0.0), dr) - center;
-
-    vec3 ddy = (abs(db - dc) < abs(dt - dc))
-        ? center - WorldPosFromDepth(uv - vec2(0.0, texel.y), db) : WorldPosFromDepth(uv + vec2(0.0, texel.y), dt) - center;
-
-    return normalize(cross(ddx, ddy));
+vec3 GetNormal(vec2 uv) {
+    return normalize(texture(u_NormalTexture, uv).rgb);
 }
 
 //  Screen Edge Fade (SSAO Halo Fix)
@@ -131,7 +116,8 @@ void main() {
     float d = linearDepth / u_Far;
     FragColor = vec4(vec3(d), 1.0);
     #elif DEBUG_MODE == 2
-    vec3 n = ReconstructNormal(v_TexCoords) * 0.5 + 0.5;
+    // G-Buffer normal visualization (no more depth reconstruction needed)
+    vec3 n = GetNormal(v_TexCoords) * 0.5 + 0.5;
     FragColor = vec4(n, 1.0);
     #elif DEBUG_MODE == 3
     float ao = texture(u_SSAOTexture, v_TexCoords).r;
