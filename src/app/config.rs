@@ -1,7 +1,7 @@
 pub struct Config {
     pub title: String,
-    pub width: i32,
-    pub height: i32,
+    pub width: u32,
+    pub height: u32,
 }
 
 impl Default for Config {

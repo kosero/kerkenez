@@ -144,8 +144,8 @@ impl RenderState {
     pub fn new(
         event_loop: &ActiveEventLoop,
         title: &str,
-        width: i32,
-        height: i32,
+        width: u32,
+        height: u32,
         vert_src: &str,
         frag_src: &str,
     ) -> Result<Self, EngineError> {
@@ -164,8 +164,8 @@ impl RenderState {
         let physical_size = window.inner_size();
         let post_processing = post_processing::PostProcessingManager::new(
             &gl,
-            physical_size.width as i32,
-            physical_size.height as i32,
+            physical_size.width,
+            physical_size.height,
         )?;
 
         let uniforms = MainUniforms::new(&gl, program);

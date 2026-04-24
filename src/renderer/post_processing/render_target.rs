@@ -29,7 +29,8 @@ impl Drop for GBuffer {
 }
 
 impl GBuffer {
-    pub fn new(gl: &Rc<Context>, width: i32, height: i32) -> Result<Self, EngineError> {
+    pub fn new(gl: &Rc<Context>, width: u32, height: u32) -> Result<Self, EngineError> {
+        let (width, height) = (width as i32, height as i32);
         unsafe {
             let fbo = gl
                 .create_framebuffer()
@@ -282,12 +283,13 @@ impl Drop for RenderTarget {
 impl RenderTarget {
     pub fn new(
         gl: &Rc<Context>,
-        width: i32,
-        height: i32,
+        width: u32,
+        height: u32,
         internal_format: i32,
         format: u32,
         data_type: u32,
     ) -> Result<Self, EngineError> {
+        let (width, height) = (width as i32, height as i32);
         unsafe {
             let fbo = gl
                 .create_framebuffer()

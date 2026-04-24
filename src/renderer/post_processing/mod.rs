@@ -214,7 +214,7 @@ impl Drop for PostProcessingManager {
 }
 
 impl PostProcessingManager {
-    pub fn new(gl: &Rc<Context>, width: i32, height: i32) -> Result<Self, EngineError> {
+    pub fn new(gl: &Rc<Context>, width: u32, height: u32) -> Result<Self, EngineError> {
         let fbo = GBuffer::new(gl, width, height)?;
         // SSAO at half resolution for performance
         let half_w = (width / 2).max(1);

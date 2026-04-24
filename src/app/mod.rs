@@ -29,7 +29,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(title: &str, width: i32, height: i32) -> Self {
+    pub fn new(title: &str, width: u32, height: u32) -> Self {
         Self {
             config: Config {
                 title: title.to_string(),

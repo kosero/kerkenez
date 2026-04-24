@@ -15,8 +15,8 @@ use std::rc::Rc;
 pub fn init_context(
     event_loop: &ActiveEventLoop,
     title: &str,
-    width: i32,
-    height: i32,
+    width: u32,
+    height: u32,
 ) -> (
     Rc<Context>,
     Surface<WindowSurface>,
