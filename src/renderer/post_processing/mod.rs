@@ -83,6 +83,7 @@ struct SsaoBlurUniforms {
     near: Option<glow::UniformLocation>,
     far: Option<glow::UniformLocation>,
     resolution: Option<glow::UniformLocation>,
+    direction: Option<glow::UniformLocation>,
 }
 
 impl UniformCache {
@@ -166,6 +167,7 @@ impl SsaoBlurUniforms {
                 near: gl.get_uniform_location(program, "u_Near"),
                 far: gl.get_uniform_location(program, "u_Far"),
                 resolution: gl.get_uniform_location(program, "u_Resolution"),
+                direction: gl.get_uniform_location(program, "u_Direction"),
             }
         }
     }
@@ -396,7 +398,7 @@ impl PostProcessingManager {
                     gl.disable(glow::DEPTH_TEST);
                     self.triangle.draw(gl);
 
-                    // 2. SSAO Blur Pass
+                    // 2. SSAO Blur Pass - Horizontal
                     gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.ssao_blur_target.fbo));
                     gl.viewport(
                         0,
@@ -423,6 +425,17 @@ impl PostProcessingManager {
                     gl.uniform_1_f32(self.ssao_blur_uniforms.near.as_ref(), near);
                     gl.uniform_1_f32(self.ssao_blur_uniforms.far.as_ref(), far);
 
+                    // Horizontal Pass
+                    gl.uniform_2_f32(self.ssao_blur_uniforms.direction.as_ref(), 1.0, 0.0);
+                    self.triangle.draw(gl);
+
+                    // 3. SSAO Blur Pass - Vertical
+                    gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.ssao_target.fbo));
+                    gl.active_texture(glow::TEXTURE0);
+                    gl.bind_texture(glow::TEXTURE_2D, Some(self.ssao_blur_target.color_texture));
+
+                    // Vertical Pass
+                    gl.uniform_2_f32(self.ssao_blur_uniforms.direction.as_ref(), 0.0, 1.0);
                     self.triangle.draw(gl);
                 }
             }
@@ -432,7 +445,7 @@ impl PostProcessingManager {
             let albedo_tex = self.fbo.color_texture;
             let depth_tex = self.fbo.depth_texture;
             let normal_tex = self.fbo.normal_texture;
-            let ssao_blur_tex = self.ssao_blur_target.color_texture;
+            let ssao_blur_tex = self.ssao_target.color_texture;
 
             let variant = self.get_variant(gl);
             let program = variant.program;
