@@ -632,5 +632,4 @@ impl PostProcessingManager {
             glow::HALF_FLOAT,
         );
     }
-
 }

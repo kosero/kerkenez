@@ -253,7 +253,6 @@ impl GBuffer {
             );
         }
     }
-
 }
 
 pub struct RenderTarget {
@@ -378,5 +377,4 @@ impl RenderTarget {
             );
         }
     }
-
 }

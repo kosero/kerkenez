@@ -75,7 +75,18 @@ impl Texture {
         }
     }
 
-    /// Bind this texture to the given texture unit and set the sampler uniform.
+    /// Bind this texture to the given texture unit using a pre-cached uniform location.
+    pub fn bind_at(&self, gl: &glow::Context, location: Option<&glow::UniformLocation>, unit: u32) {
+        unsafe {
+            gl.active_texture(glow::TEXTURE0 + unit);
+            gl.bind_texture(glow::TEXTURE_2D, Some(self.id));
+            if let Some(loc) = location {
+                gl.uniform_1_i32(Some(loc), unit as i32);
+            }
+        }
+    }
+
+    /// Bind this texture to the given texture unit and set the sampler uniform (legacy lookup).
     pub fn bind(&self, gl: &Context, program: glow::NativeProgram, unit: u32) {
         unsafe {
             gl.active_texture(glow::TEXTURE0 + unit);
@@ -90,5 +101,4 @@ impl Texture {
             gl.bind_texture(glow::TEXTURE_2D, None);
         }
     }
-
 }

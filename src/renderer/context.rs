@@ -76,7 +76,9 @@ pub fn init_context(
             .expect("Failed to make context current");
 
         // Initialize Glow bindings
-        let gl = Rc::new(glow::Context::from_loader_function_cstr(|s| gl_display.get_proc_address(s)));
+        let gl = Rc::new(glow::Context::from_loader_function_cstr(|s| {
+            gl_display.get_proc_address(s)
+        }));
 
         // Disable V-Sync for uncapped framerate
         gl_surface

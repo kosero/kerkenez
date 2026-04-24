@@ -31,5 +31,4 @@ impl FullscreenPass {
             gl.draw_arrays(glow::TRIANGLES, 0, 3);
         }
     }
-
 }

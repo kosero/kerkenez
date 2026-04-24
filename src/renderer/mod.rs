@@ -34,6 +34,24 @@ pub struct MeshBatch {
     indices_count: i32,
 }
 
+pub struct MainUniforms {
+    pub view_projection: Option<glow::UniformLocation>,
+    pub albedo_color: Option<glow::UniformLocation>,
+    pub albedo_texture: Option<glow::UniformLocation>,
+}
+
+impl MainUniforms {
+    pub fn new(gl: &glow::Context, program: glow::Program) -> Self {
+        unsafe {
+            Self {
+                view_projection: gl.get_uniform_location(program, "u_ViewProjection"),
+                albedo_color: gl.get_uniform_location(program, "u_AlbedoColor"),
+                albedo_texture: gl.get_uniform_location(program, "u_Texture"),
+            }
+        }
+    }
+}
+
 impl Drop for MeshBatch {
     fn drop(&mut self) {
         unsafe {
@@ -110,6 +128,7 @@ pub struct RenderState {
     state_cache: GlStateCache,
     pub post_processing: post_processing::PostProcessingManager,
     white_texture_id: TextureId,
+    uniforms: MainUniforms,
 }
 
 impl Drop for RenderState {
@@ -146,6 +165,8 @@ impl RenderState {
             physical_size.height as i32,
         );
 
+        let uniforms = MainUniforms::new(&gl, program);
+
         let mut state = Self {
             gl,
             ctx: GraphicsContext {
@@ -162,6 +183,7 @@ impl RenderState {
             state_cache: GlStateCache::new(),
             post_processing,
             white_texture_id: TextureId(0), // Placeholder
+            uniforms,
         };
 
         // Create default white texture
@@ -282,11 +304,11 @@ impl RenderState {
                 .clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
 
             let vp = self.camera.view_projection_matrix();
-            let location = self
-                .gl
-                .get_uniform_location(self.program, "u_ViewProjection");
-            self.gl
-                .uniform_matrix_4_f32_slice(location.as_ref(), false, &vp.to_cols_array());
+            self.gl.uniform_matrix_4_f32_slice(
+                self.uniforms.view_projection.as_ref(),
+                false,
+                &vp.to_cols_array(),
+            );
         }
     }
 
@@ -322,10 +344,8 @@ impl RenderState {
                 self.batches.get(&mesh_type),
                 self.materials.get(&material_id),
             ) {
-                let albedo_color_loc = self.gl.get_uniform_location(self.program, "u_AlbedoColor");
-
                 self.gl.uniform_4_f32(
-                    albedo_color_loc.as_ref(),
+                    self.uniforms.albedo_color.as_ref(),
                     material.albedo_color.r,
                     material.albedo_color.g,
                     material.albedo_color.b,
@@ -333,7 +353,11 @@ impl RenderState {
                 );
 
                 if let Some(tex_id) = &material.albedo_texture {
-                    self.textures[tex_id.0].bind(&self.gl, self.program, 0);
+                    self.textures[tex_id.0].bind_at(
+                        &self.gl,
+                        self.uniforms.albedo_texture.as_ref(),
+                        0,
+                    );
                 }
 
                 // State-cached VAO bind — skips if already bound
