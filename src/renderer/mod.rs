@@ -33,6 +33,7 @@ pub struct MeshBatch {
     ebo: glow::Buffer,
     instance_buffer: glow::Buffer,
     indices_count: i32,
+    local_aabb: crate::mesh::primitives::AABB,
 }
 
 pub struct MainUniforms {
@@ -263,6 +264,10 @@ impl RenderState {
                     ebo,
                     instance_buffer,
                     indices_count: mesh.indices.len() as i32,
+                    local_aabb: crate::mesh::primitives::AABB {
+                        min: mesh.bounding_box.min,
+                        max: mesh.bounding_box.max,
+                    },
                 },
             );
         }
@@ -348,10 +353,23 @@ impl RenderState {
             vec.clear();
         }
 
+        let frustum = self.camera.frustum();
+
         for cmd in render_queue {
+            let mesh_batch = match self.batches.get(&cmd.mesh_type) {
+                Some(b) => b,
+                None => continue,
+            };
+
             let model_matrix = glam::Mat4::from_translation(cmd.position)
                 * glam::Mat4::from_quat(cmd.rotation)
                 * glam::Mat4::from_scale(cmd.scale);
+
+            // Frustum Culling
+            let world_aabb = mesh_batch.local_aabb.transform(&model_matrix);
+            if !frustum.contains_aabb(&world_aabb) {
+                continue;
+            }
 
             self.batch_buffer
                 .entry((cmd.mesh_type, cmd.material))

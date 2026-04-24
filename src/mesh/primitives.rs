@@ -1,13 +1,63 @@
 use crate::mesh::Vertex;
 
+pub struct AABB {
+    pub min: glam::Vec3,
+    pub max: glam::Vec3,
+}
+
+impl AABB {
+    pub fn from_vertices(vertices: &[Vertex]) -> Self {
+        let mut min = glam::Vec3::splat(f32::MAX);
+        let mut max = glam::Vec3::splat(f32::MIN);
+
+        for v in vertices {
+            let pos = glam::Vec3::from_array(v.position);
+            min = min.min(pos);
+            max = max.max(pos);
+        }
+
+        Self { min, max }
+    }
+
+    pub fn transform(&self, matrix: &glam::Mat4) -> Self {
+        let corners = [
+            glam::vec3(self.min.x, self.min.y, self.min.z),
+            glam::vec3(self.min.x, self.min.y, self.max.z),
+            glam::vec3(self.min.x, self.max.y, self.min.z),
+            glam::vec3(self.min.x, self.max.y, self.max.z),
+            glam::vec3(self.max.x, self.min.y, self.min.z),
+            glam::vec3(self.max.x, self.min.y, self.max.z),
+            glam::vec3(self.max.x, self.max.y, self.min.z),
+            glam::vec3(self.max.x, self.max.y, self.max.z),
+        ];
+
+        let mut min = glam::Vec3::splat(f32::MAX);
+        let mut max = glam::Vec3::splat(f32::MIN);
+
+        for &c in &corners {
+            let transformed = matrix.transform_point3(c);
+            min = min.min(transformed);
+            max = max.max(transformed);
+        }
+
+        Self { min, max }
+    }
+}
+
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
+    pub bounding_box: AABB,
 }
 
 impl Mesh {
     pub fn new(vertices: Vec<Vertex>, indices: Vec<u32>) -> Self {
-        Self { vertices, indices }
+        let bounding_box = AABB::from_vertices(&vertices);
+        Self {
+            vertices,
+            indices,
+            bounding_box,
+        }
     }
 
     pub fn square() -> Self {
