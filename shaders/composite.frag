@@ -62,6 +62,9 @@ uniform float u_Saturation;
 // Vignette
 uniform float u_VignetteIntensity;
 
+// Temporal variation
+uniform float u_Time;
+
 //  Utility Functions
 
 
@@ -114,7 +117,8 @@ vec3 ApplyVignette(vec3 color, vec2 uv) {
 
 //  Dithering (Banding / Şeritlenme Önleyici)
 vec3 ApplyDithering(vec3 color, vec2 uv) {
-    float dither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) / 255.0;
+    // Temporal variation: include u_Time in the hash to vary the pattern every frame
+    float dither = fract(sin(dot(gl_FragCoord.xy + u_Time * 0.1, vec2(12.9898, 78.233))) * 43758.5453) / 255.0;
     return color + dither;
 }
 

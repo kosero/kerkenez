@@ -45,6 +45,7 @@ struct UniformCache {
     saturation: Option<glow::UniformLocation>,
     ssao_texture: Option<glow::UniformLocation>,
     vignette_intensity: Option<glow::UniformLocation>,
+    time: Option<glow::UniformLocation>,
 
     // Lighting
     camera_pos: Option<glow::UniformLocation>,
@@ -101,6 +102,7 @@ impl UniformCache {
                 saturation: gl.get_uniform_location(program, "u_Saturation"),
                 ssao_texture: gl.get_uniform_location(program, "u_SSAOTexture"),
                 vignette_intensity: gl.get_uniform_location(program, "u_VignetteIntensity"),
+                time: gl.get_uniform_location(program, "u_Time"),
 
                 camera_pos: gl.get_uniform_location(program, "u_CameraPos"),
                 ambient_color: gl.get_uniform_location(program, "u_AmbientColor"),
@@ -329,6 +331,7 @@ impl PostProcessingManager {
         window_height: i32,
         camera: &crate::camera::Camera,
         lights: &SceneLights,
+        time: f32,
     ) {
         if self.settings.enabled {
             self.fbo.unbind(gl);
@@ -539,6 +542,7 @@ impl PostProcessingManager {
                 gl.uniform_1_f32(variant.uniforms.contrast.as_ref(), settings.contrast);
                 gl.uniform_1_f32(variant.uniforms.brightness.as_ref(), settings.brightness);
                 gl.uniform_1_f32(variant.uniforms.saturation.as_ref(), settings.saturation);
+                gl.uniform_1_f32(variant.uniforms.time.as_ref(), time);
 
                 if settings.fog_enabled {
                     gl.uniform_1_f32(

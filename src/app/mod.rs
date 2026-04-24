@@ -13,6 +13,8 @@ use winit::{
     window::WindowId,
 };
 
+use std::time::Instant;
+
 pub struct App {
     config: Config,
     state: Option<RenderState>,
@@ -22,6 +24,7 @@ pub struct App {
     pub lights: SceneLights,
     pub post_processing_settings:
         crate::renderer::post_processing::settings::PostProcessingSettings,
+    pub start_time: Instant,
 }
 
 impl App {
@@ -39,6 +42,7 @@ impl App {
             lights: SceneLights::default(),
             post_processing_settings:
                 crate::renderer::post_processing::settings::PostProcessingSettings::default(),
+            start_time: Instant::now(),
         }
     }
 
@@ -145,7 +149,8 @@ impl<'a, F: FnMut(&mut App)> ApplicationHandler for Runner<'a, F> {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::RedrawRequested => {
-                state.render(&self.app.render_queue, &self.app.lights);
+                let time = self.app.start_time.elapsed().as_secs_f32();
+                state.render(&self.app.render_queue, &self.app.lights, time);
             }
             WindowEvent::Resized(size) => state.resize(size.width, size.height),
             _ => (),

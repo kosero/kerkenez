@@ -207,7 +207,7 @@ impl RenderState {
         }
     }
 
-    pub fn render(&mut self, render_queue: &[DrawCommand], lights: &SceneLights) {
+    pub fn render(&mut self, render_queue: &[DrawCommand], lights: &SceneLights, time: f32) {
         let size = self.ctx.window.inner_size();
         if size.width > 0
             && size.height > 0
@@ -242,6 +242,7 @@ impl RenderState {
                 self.ctx.window.inner_size().height as i32,
                 &self.camera,
                 lights,
+                time,
             );
 
             self.ctx
