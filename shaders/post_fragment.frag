@@ -45,25 +45,21 @@ uniform PointLight u_PointLights[MAX_POINT_LIGHTS];
 #endif
 
 // SSAO
-uniform bool u_SSAOEnabled;
 uniform float u_SSAORadius;
 uniform float u_SSAOIntensity;
 uniform float u_SSAOBias;
 
 // Fog
-uniform bool u_FogEnabled;
 uniform float u_FogDensity;
 uniform vec3 u_FogColor;
 
 // Tone Mapping & Color Grading
-uniform bool u_ToneMappingEnabled;
 uniform float u_Exposure;
 uniform float u_Contrast;
 uniform float u_Brightness;
 uniform float u_Saturation;
 
 // Vignette
-uniform bool u_VignetteEnabled;
 uniform float u_VignetteIntensity;
 
 //  Utility Functions
@@ -159,12 +155,12 @@ void main() {
 
     // SSAO
     float ao_final = 1.0;
-    if (u_SSAOEnabled) {
+    #ifdef ENABLE_SSAO
         float ao = texture(u_SSAOTexture, v_TexCoords).r;
         ao = clamp(ao, 0.0, 1.0);
         float mask = GetScreenEdgeFade(v_TexCoords);
         ao_final = 1.0 - ((1.0 - ao) * mask);
-    }
+    #endif
 
     // 1. Ambient Lighting
     vec3 ambient = u_AmbientColor * u_AmbientIntensity * albedo;
@@ -219,22 +215,22 @@ void main() {
     vec3 color = lighting * u_Exposure;
 
     // 4. Fog
-    if (u_FogEnabled) {
+    #ifdef ENABLE_FOG
         color = ApplyFog(color, linearDepth);
-    }
+    #endif
 
     // 5. Tone Mapping
-    if (u_ToneMappingEnabled) {
+    #ifdef ENABLE_TONEMAP
         color = ACESFilm(color);
-    }
+    #endif
 
     // 6. Color Grading
     color = ApplyColorGrading(color);
 
     // 7. Vignette
-    if (u_VignetteEnabled) {
+    #ifdef ENABLE_VIGNETTE
         color = ApplyVignette(color, v_TexCoords);
-    }
+    #endif
 
     // 8. Gamma Correction
     color = pow(max(color, vec3(0.0)), vec3(1.0 / 2.2));

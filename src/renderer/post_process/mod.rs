@@ -4,10 +4,32 @@ pub mod settings;
 
 use self::fbo::{FrameBuffer, RenderTarget};
 use self::fullscreen_triangle::FullscreenTriangle;
-use self::settings::{DebugMode, PostProcessSettings};
+use self::settings::PostProcessSettings;
 use crate::renderer::light::{MAX_POINT_LIGHTS, SceneLights};
 use crate::renderer::shader;
 use glow::{Context, HasContext};
+use std::collections::HashMap;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct ShaderDefines {
+    debug_mode: i32,
+    ssao_enabled: bool,
+    fog_enabled: bool,
+    tone_mapping_enabled: bool,
+    vignette_enabled: bool,
+}
+
+impl ShaderDefines {
+    fn from_settings(settings: &PostProcessSettings) -> Self {
+        Self {
+            debug_mode: settings.debug_mode as i32,
+            ssao_enabled: settings.ssao_enabled,
+            fog_enabled: settings.fog_enabled,
+            tone_mapping_enabled: settings.tone_mapping_enabled,
+            vignette_enabled: settings.vignette_enabled,
+        }
+    }
+}
 
 struct UniformCache {
     screen_texture: Option<glow::UniformLocation>,
@@ -17,16 +39,10 @@ struct UniformCache {
     far: Option<glow::UniformLocation>,
     inverse_vp: Option<glow::UniformLocation>,
     resolution: Option<glow::UniformLocation>,
-    ssao_enabled: Option<glow::UniformLocation>,
-    fog_enabled: Option<glow::UniformLocation>,
-    fog_density: Option<glow::UniformLocation>,
-    fog_color: Option<glow::UniformLocation>,
-    tone_mapping_enabled: Option<glow::UniformLocation>,
     exposure: Option<glow::UniformLocation>,
     contrast: Option<glow::UniformLocation>,
     brightness: Option<glow::UniformLocation>,
     saturation: Option<glow::UniformLocation>,
-    vignette_enabled: Option<glow::UniformLocation>,
     ssao_texture: Option<glow::UniformLocation>,
     vignette_intensity: Option<glow::UniformLocation>,
 
@@ -78,16 +94,10 @@ impl UniformCache {
                 far: gl.get_uniform_location(program, "u_Far"),
                 inverse_vp: gl.get_uniform_location(program, "u_InverseVP"),
                 resolution: gl.get_uniform_location(program, "u_Resolution"),
-                ssao_enabled: gl.get_uniform_location(program, "u_SSAOEnabled"),
-                fog_enabled: gl.get_uniform_location(program, "u_FogEnabled"),
-                fog_density: gl.get_uniform_location(program, "u_FogDensity"),
-                fog_color: gl.get_uniform_location(program, "u_FogColor"),
-                tone_mapping_enabled: gl.get_uniform_location(program, "u_ToneMappingEnabled"),
                 exposure: gl.get_uniform_location(program, "u_Exposure"),
                 contrast: gl.get_uniform_location(program, "u_Contrast"),
                 brightness: gl.get_uniform_location(program, "u_Brightness"),
                 saturation: gl.get_uniform_location(program, "u_Saturation"),
-                vignette_enabled: gl.get_uniform_location(program, "u_VignetteEnabled"),
                 ssao_texture: gl.get_uniform_location(program, "u_SSAOTexture"),
                 vignette_intensity: gl.get_uniform_location(program, "u_VignetteIntensity"),
 
@@ -174,7 +184,7 @@ pub struct PostProcessManager {
     ssao_blur_program: glow::Program,
     ssao_blur_uniforms: SsaoBlurUniforms,
 
-    variants: [ProgramVariant; 4],
+    variants: HashMap<ShaderDefines, ProgramVariant>,
     pub settings: PostProcessSettings,
 }
 
@@ -201,37 +211,11 @@ impl PostProcessManager {
         let triangle = FullscreenTriangle::new(gl);
 
         let vert_src = include_str!("../../../shaders/screen_quad.vert");
-        let frag_src = include_str!("../../../shaders/post_fragment.frag");
+        let _frag_src = include_str!("../../../shaders/post_fragment.frag");
         let ssao_frag_src = include_str!("../../../shaders/ssao.frag");
         let ssao_blur_frag_src = include_str!("../../../shaders/ssao_blur.frag");
 
-        let create_variant = |mode: i32| -> ProgramVariant {
-            unsafe {
-                let program = gl
-                    .create_program()
-                    .expect("Failed to create post-process program");
-
-                // Inject the #define right after the version pragma
-                let version_pragma = "#version 410 core\n";
-                let frag_src_modified =
-                    if let Some(stripped) = frag_src.strip_prefix(version_pragma) {
-                        format!("{version_pragma}#define DEBUG_MODE {mode}\n{stripped}")
-                    } else {
-                        format!("#define DEBUG_MODE {mode}\n{frag_src}")
-                    };
-
-                shader::create_shaders(gl, program, vert_src, &frag_src_modified);
-                let uniforms = UniformCache::new(gl, program);
-                ProgramVariant { program, uniforms }
-            }
-        };
-
-        let variants = [
-            create_variant(0),
-            create_variant(1),
-            create_variant(2),
-            create_variant(3),
-        ];
+        let variants = HashMap::new();
 
         let (ssao_program, ssao_blur_program) = unsafe {
             let sp = gl.create_program().expect("Failed to create ssao program");
@@ -281,9 +265,50 @@ impl PostProcessManager {
         }
     }
 
+    fn get_variant(&mut self, gl: &Context) -> &ProgramVariant {
+        let defines = ShaderDefines::from_settings(&self.settings);
+
+        if !self.variants.contains_key(&defines) {
+            let vert_src = include_str!("../../../shaders/screen_quad.vert");
+            let frag_src = include_str!("../../../shaders/post_fragment.frag");
+
+            let mut define_str = format!("#define DEBUG_MODE {}\n", defines.debug_mode);
+            if defines.ssao_enabled {
+                define_str.push_str("#define ENABLE_SSAO\n");
+            }
+            if defines.fog_enabled {
+                define_str.push_str("#define ENABLE_FOG\n");
+            }
+            if defines.tone_mapping_enabled {
+                define_str.push_str("#define ENABLE_TONEMAP\n");
+            }
+            if defines.vignette_enabled {
+                define_str.push_str("#define ENABLE_VIGNETTE\n");
+            }
+
+            let version_pragma = "#version 410 core\n";
+            let frag_src_modified = if let Some(stripped) = frag_src.strip_prefix(version_pragma) {
+                format!("{version_pragma}{define_str}{stripped}")
+            } else {
+                format!("{define_str}{frag_src}")
+            };
+
+            unsafe {
+                let program = gl
+                    .create_program()
+                    .expect("Failed to create post-process program variant");
+                shader::create_shaders(gl, program, vert_src, &frag_src_modified);
+                let uniforms = UniformCache::new(gl, program);
+                self.variants
+                    .insert(defines, ProgramVariant { program, uniforms });
+            }
+        }
+        self.variants.get(&defines).unwrap()
+    }
+
     /// Unbind the G-Buffer FBO and draw the fullscreen pass with all post-processing.
     pub fn end(
-        &self,
+        &mut self,
         gl: &Context,
         window_width: i32,
         window_height: i32,
@@ -300,11 +325,13 @@ impl PostProcessManager {
             let inv_vp = camera.view_projection_matrix().inverse();
             let camera_pos = camera.position();
 
-            // 1. SSAO Generation Pass
+            // 1. SSAO Pass
             if self.settings.ssao_enabled {
                 unsafe {
                     gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.ssao_target.fbo));
                     gl.viewport(0, 0, self.ssao_target.width, self.ssao_target.height);
+                    gl.clear_color(1.0, 1.0, 1.0, 1.0);
+                    gl.clear(glow::COLOR_BUFFER_BIT);
 
                     gl.use_program(Some(self.ssao_program));
 
@@ -331,18 +358,9 @@ impl PostProcessManager {
                         window_height as f32,
                     );
 
-                    gl.uniform_1_f32(
-                        self.ssao_uniforms.ssao_radius.as_ref(),
-                        self.settings.ssao_radius,
-                    );
-                    gl.uniform_1_f32(
-                        self.ssao_uniforms.ssao_intensity.as_ref(),
-                        self.settings.ssao_intensity,
-                    );
-                    gl.uniform_1_f32(
-                        self.ssao_uniforms.ssao_bias.as_ref(),
-                        self.settings.ssao_bias,
-                    );
+                    gl.uniform_1_f32(self.ssao_uniforms.ssao_radius.as_ref(), self.settings.ssao_radius);
+                    gl.uniform_1_f32(self.ssao_uniforms.ssao_intensity.as_ref(), self.settings.ssao_intensity);
+                    gl.uniform_1_f32(self.ssao_uniforms.ssao_bias.as_ref(), self.settings.ssao_bias);
 
                     gl.disable(glow::DEPTH_TEST);
                     self.triangle.draw(gl);
@@ -379,13 +397,14 @@ impl PostProcessManager {
             }
 
             // 3. Final Compose Pass
-            let variant_idx = match self.settings.debug_mode {
-                DebugMode::None => 0,
-                DebugMode::Depth => 1,
-                DebugMode::Normals => 2,
-                DebugMode::SSAO => 3,
-            };
-            let variant = &self.variants[variant_idx];
+            let settings = self.settings.clone();
+            let albedo_tex = self.fbo.color_texture;
+            let depth_tex = self.fbo.depth_texture;
+            let normal_tex = self.fbo.normal_texture;
+            let ssao_blur_tex = self.ssao_blur_target.color_texture;
+
+            let variant = self.get_variant(gl);
+            let program = variant.program;
 
             unsafe {
                 gl.bind_framebuffer(glow::FRAMEBUFFER, None);
@@ -393,27 +412,26 @@ impl PostProcessManager {
                 gl.clear_color(0.0, 0.0, 0.0, 1.0);
                 gl.clear(glow::COLOR_BUFFER_BIT);
 
-                gl.use_program(Some(variant.program));
+                gl.use_program(Some(program));
 
-                // Bind G-Buffer textures
                 gl.active_texture(glow::TEXTURE0);
-                gl.bind_texture(glow::TEXTURE_2D, Some(self.fbo.color_texture));
+                gl.bind_texture(glow::TEXTURE_2D, Some(albedo_tex));
                 gl.uniform_1_i32(variant.uniforms.screen_texture.as_ref(), 0);
 
                 gl.active_texture(glow::TEXTURE1);
-                gl.bind_texture(glow::TEXTURE_2D, Some(self.fbo.depth_texture));
+                gl.bind_texture(glow::TEXTURE_2D, Some(depth_tex));
                 gl.uniform_1_i32(variant.uniforms.depth_texture.as_ref(), 1);
 
                 gl.active_texture(glow::TEXTURE2);
-                gl.bind_texture(glow::TEXTURE_2D, Some(self.ssao_blur_target.color_texture));
-                gl.uniform_1_i32(variant.uniforms.ssao_texture.as_ref(), 2);
+                gl.bind_texture(glow::TEXTURE_2D, Some(normal_tex));
+                gl.uniform_1_i32(variant.uniforms.normal_texture.as_ref(), 2);
 
-                // G-Buffer normal texture — unit 3
-                gl.active_texture(glow::TEXTURE3);
-                gl.bind_texture(glow::TEXTURE_2D, Some(self.fbo.normal_texture));
-                gl.uniform_1_i32(variant.uniforms.normal_texture.as_ref(), 3);
+                if settings.ssao_enabled {
+                    gl.active_texture(glow::TEXTURE3);
+                    gl.bind_texture(glow::TEXTURE_2D, Some(ssao_blur_tex));
+                    gl.uniform_1_i32(variant.uniforms.ssao_texture.as_ref(), 3);
+                }
 
-                // Camera uniforms
                 gl.uniform_1_f32(variant.uniforms.near.as_ref(), near);
                 gl.uniform_1_f32(variant.uniforms.far.as_ref(), far);
                 gl.uniform_matrix_4_f32_slice(
@@ -433,7 +451,6 @@ impl PostProcessManager {
                     camera_pos.z,
                 );
 
-                // Lighting
                 gl.uniform_3_f32(
                     variant.uniforms.ambient_color.as_ref(),
                     lights.ambient_color.x,
@@ -445,39 +462,36 @@ impl PostProcessManager {
                     lights.ambient_intensity,
                 );
 
-                if let Some(dir_light) = &lights.directional {
-                    gl.uniform_1_i32(variant.uniforms.dir_light_enabled.as_ref(), 1);
+                if let Some(dir) = &lights.directional {
                     gl.uniform_3_f32(
                         variant.uniforms.dir_light_direction.as_ref(),
-                        dir_light.direction.x,
-                        dir_light.direction.y,
-                        dir_light.direction.z,
+                        dir.direction.x,
+                        dir.direction.y,
+                        dir.direction.z,
                     );
                     gl.uniform_3_f32(
                         variant.uniforms.dir_light_color.as_ref(),
-                        dir_light.color.x,
-                        dir_light.color.y,
-                        dir_light.color.z,
+                        dir.color.x,
+                        dir.color.y,
+                        dir.color.z,
                     );
                     gl.uniform_1_f32(
                         variant.uniforms.dir_light_intensity.as_ref(),
-                        dir_light.intensity,
+                        dir.intensity,
                     );
+                    gl.uniform_1_i32(variant.uniforms.dir_light_enabled.as_ref(), 1);
                 } else {
                     gl.uniform_1_i32(variant.uniforms.dir_light_enabled.as_ref(), 0);
                 }
 
-                let point_lights_len = lights.point_lights.len().min(MAX_POINT_LIGHTS);
                 gl.uniform_1_i32(
                     variant.uniforms.point_lights_count.as_ref(),
-                    point_lights_len as i32,
+                    lights.point_lights.len() as i32,
                 );
-                for (i, light) in lights
-                    .point_lights
-                    .iter()
-                    .take(MAX_POINT_LIGHTS)
-                    .enumerate()
-                {
+                for (i, light) in lights.point_lights.iter().enumerate() {
+                    if i >= MAX_POINT_LIGHTS {
+                        break;
+                    }
                     gl.uniform_3_f32(
                         variant.uniforms.point_light_positions[i].as_ref(),
                         light.position.x,
@@ -496,56 +510,31 @@ impl PostProcessManager {
                     );
                     gl.uniform_1_f32(variant.uniforms.point_light_radii[i].as_ref(), light.radius);
                 }
+                gl.uniform_1_f32(variant.uniforms.exposure.as_ref(), settings.exposure);
+                gl.uniform_1_f32(variant.uniforms.contrast.as_ref(), settings.contrast);
+                gl.uniform_1_f32(variant.uniforms.brightness.as_ref(), settings.brightness);
+                gl.uniform_1_f32(variant.uniforms.saturation.as_ref(), settings.saturation);
 
-                // SSAO enabled flag for main shader
-                gl.uniform_1_i32(
-                    variant.uniforms.ssao_enabled.as_ref(),
-                    self.settings.ssao_enabled as i32,
-                );
+                if settings.fog_enabled {
+                    gl.uniform_1_f32(
+                        gl.get_uniform_location(program, "u_FogDensity").as_ref(),
+                        settings.fog_density,
+                    );
+                    gl.uniform_3_f32(
+                        gl.get_uniform_location(program, "u_FogColor").as_ref(),
+                        settings.fog_color[0],
+                        settings.fog_color[1],
+                        settings.fog_color[2],
+                    );
+                }
 
-                // Fog
-                gl.uniform_1_i32(
-                    variant.uniforms.fog_enabled.as_ref(),
-                    self.settings.fog_enabled as i32,
-                );
-                gl.uniform_1_f32(
-                    variant.uniforms.fog_density.as_ref(),
-                    self.settings.fog_density,
-                );
-                gl.uniform_3_f32(
-                    variant.uniforms.fog_color.as_ref(),
-                    self.settings.fog_color[0],
-                    self.settings.fog_color[1],
-                    self.settings.fog_color[2],
-                );
+                if settings.vignette_enabled {
+                    gl.uniform_1_f32(
+                        variant.uniforms.vignette_intensity.as_ref(),
+                        settings.vignette_intensity,
+                    );
+                }
 
-                // Tone mapping & color grading
-                gl.uniform_1_i32(
-                    variant.uniforms.tone_mapping_enabled.as_ref(),
-                    self.settings.tone_mapping_enabled as i32,
-                );
-                gl.uniform_1_f32(variant.uniforms.exposure.as_ref(), self.settings.exposure);
-                gl.uniform_1_f32(variant.uniforms.contrast.as_ref(), self.settings.contrast);
-                gl.uniform_1_f32(
-                    variant.uniforms.brightness.as_ref(),
-                    self.settings.brightness,
-                );
-                gl.uniform_1_f32(
-                    variant.uniforms.saturation.as_ref(),
-                    self.settings.saturation,
-                );
-
-                // Vignette
-                gl.uniform_1_i32(
-                    variant.uniforms.vignette_enabled.as_ref(),
-                    self.settings.vignette_enabled as i32,
-                );
-                gl.uniform_1_f32(
-                    variant.uniforms.vignette_intensity.as_ref(),
-                    self.settings.vignette_intensity,
-                );
-
-                // Draw fullscreen triangle
                 gl.disable(glow::DEPTH_TEST);
                 self.triangle.draw(gl);
                 gl.enable(glow::DEPTH_TEST);
@@ -581,7 +570,7 @@ impl PostProcessManager {
         unsafe {
             gl.delete_program(self.ssao_program);
             gl.delete_program(self.ssao_blur_program);
-            for variant in &self.variants {
+            for variant in self.variants.values() {
                 gl.delete_program(variant.program);
             }
         }
