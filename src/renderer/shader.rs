@@ -1,15 +1,9 @@
 use glow::{Context, HasContext, Program};
 
-pub fn create_shaders(gl: &Context, program: Program) {
+pub fn create_shaders(gl: &Context, program: Program, vert_src: &str, frag_src: &str) {
     let shader_srcs = [
-        (
-            glow::VERTEX_SHADER,
-            include_str!("../../shaders/vertex.vert"),
-        ),
-        (
-            glow::FRAGMENT_SHADER,
-            include_str!("../../shaders/fragment.frag"),
-        ),
+        (glow::VERTEX_SHADER, vert_src),
+        (glow::FRAGMENT_SHADER, frag_src),
     ];
 
     let mut shaders = Vec::with_capacity(shader_srcs.len());

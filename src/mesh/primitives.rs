@@ -51,6 +51,124 @@ impl Mesh {
         let indices = vec![0, 1, 2];
         Self::new(vertices, indices)
     }
+
+    pub fn cube() -> Self {
+        let vertices = vec![
+            // Front face
+            Vertex {
+                position: [-0.5, -0.5, 0.5],
+                tex_coords: [0.0, 1.0],
+            },
+            Vertex {
+                position: [0.5, -0.5, 0.5],
+                tex_coords: [1.0, 1.0],
+            },
+            Vertex {
+                position: [0.5, 0.5, 0.5],
+                tex_coords: [1.0, 0.0],
+            },
+            Vertex {
+                position: [-0.5, 0.5, 0.5],
+                tex_coords: [0.0, 0.0],
+            },
+            // Back face
+            Vertex {
+                position: [-0.5, -0.5, -0.5],
+                tex_coords: [1.0, 1.0],
+            },
+            Vertex {
+                position: [0.5, -0.5, -0.5],
+                tex_coords: [0.0, 1.0],
+            },
+            Vertex {
+                position: [0.5, 0.5, -0.5],
+                tex_coords: [0.0, 0.0],
+            },
+            Vertex {
+                position: [-0.5, 0.5, -0.5],
+                tex_coords: [1.0, 0.0],
+            },
+            // Top face
+            Vertex {
+                position: [-0.5, 0.5, 0.5],
+                tex_coords: [0.0, 1.0],
+            },
+            Vertex {
+                position: [0.5, 0.5, 0.5],
+                tex_coords: [1.0, 1.0],
+            },
+            Vertex {
+                position: [0.5, 0.5, -0.5],
+                tex_coords: [1.0, 0.0],
+            },
+            Vertex {
+                position: [-0.5, 0.5, -0.5],
+                tex_coords: [0.0, 0.0],
+            },
+            // Bottom face
+            Vertex {
+                position: [-0.5, -0.5, 0.5],
+                tex_coords: [0.0, 0.0],
+            },
+            Vertex {
+                position: [0.5, -0.5, 0.5],
+                tex_coords: [1.0, 0.0],
+            },
+            Vertex {
+                position: [0.5, -0.5, -0.5],
+                tex_coords: [1.0, 1.0],
+            },
+            Vertex {
+                position: [-0.5, -0.5, -0.5],
+                tex_coords: [0.0, 1.0],
+            },
+            // Right face
+            Vertex {
+                position: [0.5, -0.5, 0.5],
+                tex_coords: [0.0, 1.0],
+            },
+            Vertex {
+                position: [0.5, 0.5, 0.5],
+                tex_coords: [0.0, 0.0],
+            },
+            Vertex {
+                position: [0.5, 0.5, -0.5],
+                tex_coords: [1.0, 0.0],
+            },
+            Vertex {
+                position: [0.5, -0.5, -0.5],
+                tex_coords: [1.0, 1.0],
+            },
+            // Left face
+            Vertex {
+                position: [-0.5, -0.5, 0.5],
+                tex_coords: [1.0, 1.0],
+            },
+            Vertex {
+                position: [-0.5, 0.5, 0.5],
+                tex_coords: [1.0, 0.0],
+            },
+            Vertex {
+                position: [-0.5, 0.5, -0.5],
+                tex_coords: [0.0, 0.0],
+            },
+            Vertex {
+                position: [-0.5, -0.5, -0.5],
+                tex_coords: [0.0, 1.0],
+            },
+        ];
+
+        let indices = vec![
+            0, 1, 2, 2, 3, 0, // front
+            4, 5, 6, 6, 7, 4, // back
+            8, 9, 10, 10, 11, 8, // top
+            12, 13, 14, 14, 15, 12, // bottom
+            16, 17, 18, 18, 19, 16, // right
+            20, 21, 22, 22, 23, 20, // left
+        ];
+
+        Self::new(vertices, indices)
+    }
 }
 
 pub struct Square;
@@ -69,10 +187,19 @@ impl Triangle {
     }
 }
 
+pub struct Cube;
+impl Cube {
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new() -> RenderCommand {
+        RenderCommand::new(MeshType::Cube)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MeshType {
     Square,
     Triangle,
+    Cube,
 }
 
 pub struct RenderCommand {
@@ -81,7 +208,7 @@ pub struct RenderCommand {
     pub position: glam::Vec3,
     pub scale: glam::Vec3,
     pub rotation: glam::Quat,
-    pub color: glam::Vec3,
+    pub color: glam::Vec4,
 }
 
 impl RenderCommand {
@@ -92,7 +219,7 @@ impl RenderCommand {
             position: glam::Vec3::ZERO,
             scale: glam::Vec3::ONE,
             rotation: glam::Quat::IDENTITY,
-            color: glam::Vec3::ONE,
+            color: glam::Vec4::ONE,
         }
     }
 
@@ -106,13 +233,18 @@ impl RenderCommand {
         self
     }
 
+    pub fn rotate(mut self, x: f32, y: f32, z: f32) -> Self {
+        self.rotation = glam::Quat::from_euler(glam::EulerRot::XYZ, x, y, z);
+        self
+    }
+
     pub fn scale(mut self, s: f32) -> Self {
         self.scale = glam::Vec3::splat(s);
         self
     }
 
-    pub fn color(mut self, r: f32, g: f32, b: f32) -> Self {
-        self.color = glam::vec3(r, g, b);
+    pub fn color(mut self, r: f32, g: f32, b: f32, a: f32) -> Self {
+        self.color = glam::vec4(r, g, b, a);
         self
     }
 }

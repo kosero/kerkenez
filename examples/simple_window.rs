@@ -11,10 +11,11 @@ fn main() {
         let y = rng.gen_range(-50.0..50.0);
         let z = rng.gen_range(0.0..100.0);
 
-        app.draw(Square::new().at(x, y, z).scale(0.1).color(
+        app.draw(Cube::new().at(x, y, z).scale(0.1).color(
             rng.r#gen::<f32>(),
             rng.r#gen::<f32>(),
             rng.r#gen::<f32>(),
+            1.0,
         ));
     }
 

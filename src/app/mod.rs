@@ -1,7 +1,9 @@
 pub mod config;
 
 use self::config::Config;
+use crate::mesh::RenderCommand;
 use crate::renderer::RenderState;
+use crate::renderer::material::{Material, MaterialId};
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
@@ -12,11 +14,9 @@ use winit::{
 pub struct App {
     config: Config,
     state: Option<RenderState>,
-    render_queue: Vec<crate::mesh::RenderCommand>,
-    materials: Vec<(
-        crate::renderer::material::MaterialId,
-        crate::renderer::material::Material,
-    )>,
+    render_queue: Vec<RenderCommand>,
+    materials: Vec<(MaterialId, Material)>,
+    next_material_id: usize,
 }
 
 impl App {
@@ -30,7 +30,15 @@ impl App {
             state: None,
             render_queue: Vec::new(),
             materials: Vec::new(),
+            next_material_id: 1,
         }
+    }
+
+    pub fn add_material(&mut self, material: Material) -> MaterialId {
+        let id = MaterialId(self.next_material_id);
+        self.next_material_id += 1;
+        self.register_material(id, material);
+        id
     }
 
     pub fn register_material(
@@ -58,11 +66,16 @@ impl App {
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        let vert_src = include_str!("../../shaders/vertex.vert");
+        let frag_src = include_str!("../../shaders/fragment.frag");
+
         let mut state = RenderState::new(
             event_loop,
             &self.config.title,
             self.config.width,
             self.config.height,
+            vert_src,
+            frag_src,
         );
 
         // Register queued materials
