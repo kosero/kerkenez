@@ -149,10 +149,62 @@ void main() {
     float shininess = 32.0;
     float specularStrength = 0.2;
 
-    // SSAO
+    // SSAO with Bilateral Upsampling
     float ao_final = 1.0;
     #ifdef ENABLE_SSAO
-        float ao = texture(u_SSAOTexture, v_TexCoords).r;
+        // 2x2 Bilateral Upsample
+        // We sample the 4 nearest pixels in the half-res SSAO texture
+        // and weight them by their depth difference to the full-res pixel.
+        
+        vec2 ssao_uv = v_TexCoords;
+        vec2 half_res = u_Resolution * 0.5;
+        vec2 texel_size = 1.0 / half_res;
+        
+        // Find the 4 nearest half-res texel centers
+        vec2 f = fract(ssao_uv * half_res - 0.5);
+        vec2 t0 = (floor(ssao_uv * half_res - 0.5) + 0.5) / half_res;
+        
+        vec4 ao_samples;
+        ao_samples.x = texture(u_SSAOTexture, t0).r;
+        ao_samples.y = texture(u_SSAOTexture, t0 + vec2(texel_size.x, 0.0)).r;
+        ao_samples.z = texture(u_SSAOTexture, t0 + vec2(0.0, texel_size.y)).r;
+        ao_samples.w = texture(u_SSAOTexture, t0 + texel_size).r;
+        
+        vec4 depth_samples;
+        depth_samples.x = texture(u_DepthTexture, t0).r;
+        depth_samples.y = texture(u_DepthTexture, t0 + vec2(texel_size.x, 0.0)).r;
+        depth_samples.z = texture(u_DepthTexture, t0 + vec2(0.0, texel_size.y)).r;
+        depth_samples.w = texture(u_DepthTexture, t0 + texel_size).r;
+        
+        // Convert to linear depth for better comparison
+        depth_samples.x = LinearizeDepth(depth_samples.x, u_Near, u_Far) / u_Far;
+        depth_samples.y = LinearizeDepth(depth_samples.y, u_Near, u_Far) / u_Far;
+        depth_samples.z = LinearizeDepth(depth_samples.z, u_Near, u_Far) / u_Far;
+        depth_samples.w = LinearizeDepth(depth_samples.w, u_Near, u_Far) / u_Far;
+        
+        float current_depth = linearDepth / u_Far;
+        
+        // Bilateral weights
+        vec4 weights = vec4(
+            (1.0 - f.x) * (1.0 - f.y),
+            f.x * (1.0 - f.y),
+            (1.0 - f.x) * f.y,
+            f.x * f.y
+        );
+        
+        vec4 depth_diff = abs(depth_samples - vec4(current_depth));
+        vec4 depth_weights = exp(-depth_diff * 100.0); // Sensitivity to depth difference
+        
+        weights *= depth_weights;
+        
+        float weight_sum = dot(weights, vec4(1.0));
+        float ao;
+        if (weight_sum > 0.01) {
+            ao = dot(ao_samples, weights) / weight_sum;
+        } else {
+            ao = texture(u_SSAOTexture, ssao_uv).r; // Fallback to bilinear
+        }
+        
         ao = clamp(ao, 0.0, 1.0);
         float mask = GetScreenEdgeFade(v_TexCoords);
         ao_final = 1.0 - ((1.0 - ao) * mask);
