@@ -21,6 +21,18 @@ impl DrawCommand {
         }
     }
 
+    pub fn square() -> Self {
+        Self::new(MeshType::Square)
+    }
+
+    pub fn triangle() -> Self {
+        Self::new(MeshType::Triangle)
+    }
+
+    pub fn cube() -> Self {
+        Self::new(MeshType::Cube)
+    }
+
     pub fn material(mut self, id: crate::renderer::material::MaterialId) -> Self {
         self.material = id;
         self

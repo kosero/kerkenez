@@ -1,5 +1,5 @@
 use crate::mesh::Vertex;
-use crate::renderer::draw_command::DrawCommand;
+
 
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
@@ -203,29 +203,7 @@ impl Mesh {
     }
 }
 
-pub struct Square;
-impl Square {
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> DrawCommand {
-        DrawCommand::new(MeshType::Square)
-    }
-}
 
-pub struct Triangle;
-impl Triangle {
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> DrawCommand {
-        DrawCommand::new(MeshType::Triangle)
-    }
-}
-
-pub struct Cube;
-impl Cube {
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> DrawCommand {
-        DrawCommand::new(MeshType::Cube)
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MeshType {

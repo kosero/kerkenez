@@ -268,7 +268,7 @@ impl PostProcessManager {
     fn get_variant(&mut self, gl: &Context) -> &ProgramVariant {
         let defines = ShaderDefines::from_settings(&self.settings);
 
-        if !self.variants.contains_key(&defines) {
+        self.variants.entry(defines).or_insert_with(|| {
             let vert_src = include_str!("../../../shaders/fullscreen.vert");
             let frag_src = include_str!("../../../shaders/composite.frag");
 
@@ -299,11 +299,9 @@ impl PostProcessManager {
                     .expect("Failed to create post-process program variant");
                 shader::create_shaders(gl, program, vert_src, &frag_src_modified);
                 let uniforms = UniformCache::new(gl, program);
-                self.variants
-                    .insert(defines, ProgramVariant { program, uniforms });
+                ProgramVariant { program, uniforms }
             }
-        }
-        self.variants.get(&defines).unwrap()
+        })
     }
 
     /// Unbind the G-Buffer FBO and draw the fullscreen pass with all post-processing.

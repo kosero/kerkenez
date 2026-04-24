@@ -1,7 +1,7 @@
 pub use crate::app::App;
 pub use crate::mesh::{
     instance::Instance,
-    primitives::{Cube, Mesh, MeshType, Square, Triangle},
+    primitives::{Mesh, MeshType},
     vertex::Vertex,
 };
 pub use crate::renderer::{

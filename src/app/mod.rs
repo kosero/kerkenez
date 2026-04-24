@@ -146,7 +146,7 @@ impl<'a, F: FnMut(&mut App)> ApplicationHandler for Runner<'a, F> {
             self.app.render_queue.clear();
             
             // Run user update logic
-            (self.update)(&mut self.app);
+            (self.update)(self.app);
             
             // Request redraw with the new queue
             if let Some(state) = self.app.state.as_mut() {
