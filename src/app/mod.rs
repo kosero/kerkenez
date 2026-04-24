@@ -87,7 +87,7 @@ impl App {
         self.state.as_mut().map(|s| &mut s.post_process)
     }
 
-    pub fn run<F>(self, update: F)
+    pub fn run<F>(&mut self, update: F)
     where
         F: FnMut(&mut App),
     {
@@ -98,12 +98,12 @@ impl App {
     }
 }
 
-struct Runner<F> {
-    app: App,
+struct Runner<'a, F> {
+    app: &'a mut App,
     update: F,
 }
 
-impl<F: FnMut(&mut App)> ApplicationHandler for Runner<F> {
+impl<'a, F: FnMut(&mut App)> ApplicationHandler for Runner<'a, F> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let vert_src = include_str!("../../shaders/vertex.vert");
         let frag_src = include_str!("../../shaders/fragment.frag");
