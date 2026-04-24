@@ -3,61 +3,58 @@
 in vec2 v_TexCoords;
 out vec4 FragColor;
 
-// ── Textures ────────────────────────────────────────────────────────
+// Textures
 uniform sampler2D u_ScreenTexture;
 uniform sampler2D u_DepthTexture;
+uniform sampler2D u_SSAOTexture;
 
-// ── Camera ──────────────────────────────────────────────────────────
+// Camera
 uniform float u_Near;
 uniform float u_Far;
-uniform mat4  u_InverseVP;
-uniform vec2  u_Resolution;
+uniform mat4 u_InverseVP;
+uniform vec2 u_Resolution;
 
-// ── Debug ───────────────────────────────────────────────────────────
+// Debug
 #ifndef DEBUG_MODE
 #define DEBUG_MODE 0
 #endif
 
-// ── SSAO ────────────────────────────────────────────────────────────
-uniform bool  u_SSAOEnabled;
+// SSAO
+uniform bool u_SSAOEnabled;
 uniform float u_SSAORadius;
 uniform float u_SSAOIntensity;
 uniform float u_SSAOBias;
 
-// ── Fog ─────────────────────────────────────────────────────────────
-uniform bool  u_FogEnabled;
+// Fog
+uniform bool u_FogEnabled;
 uniform float u_FogDensity;
-uniform vec3  u_FogColor;
+uniform vec3 u_FogColor;
 
-// ── Tone Mapping & Color Grading ────────────────────────────────────
-uniform bool  u_ToneMappingEnabled;
+// Tone Mapping & Color Grading
+uniform bool u_ToneMappingEnabled;
 uniform float u_Exposure;
 uniform float u_Contrast;
 uniform float u_Brightness;
 uniform float u_Saturation;
 
-// ── Vignette ────────────────────────────────────────────────────────
-uniform bool  u_VignetteEnabled;
+// Vignette
+uniform bool u_VignetteEnabled;
 uniform float u_VignetteIntensity;
 
-// ═══════════════════════════════════════════════════════════════════
 //  Utility Functions
-// ═══════════════════════════════════════════════════════════════════
 
 float LinearizeDepth(float depth) {
-    float z = depth * 2.0 - 1.0;
+    float z = depth * 2.0 - 1.0; // NDC
     return (2.0 * u_Near * u_Far) / (u_Far + u_Near - z * (u_Far - u_Near));
 }
 
 vec3 WorldPosFromDepth(vec2 uv, float depth) {
     vec4 ndc = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
-    vec4 wp  = u_InverseVP * ndc;
+    vec4 wp = u_InverseVP * ndc;
     return wp.xyz / wp.w;
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  Normal Reconstruction (Accurate, discontinuity-aware)
-// ═══════════════════════════════════════════════════════════════════
+//  Normal Reconstruction
 
 vec3 ReconstructNormal(vec2 uv) {
     vec2 texel = 1.0 / u_Resolution;
@@ -70,77 +67,29 @@ vec3 ReconstructNormal(vec2 uv) {
 
     vec3 center = WorldPosFromDepth(uv, dc);
 
-    // Pick the neighbor pair with the smallest depth delta
-    // to avoid artifacts at depth discontinuities (edges).
     vec3 ddx = (abs(dl - dc) < abs(dr - dc))
-        ? center - WorldPosFromDepth(uv - vec2(texel.x, 0.0), dl)
-        : WorldPosFromDepth(uv + vec2(texel.x, 0.0), dr) - center;
+        ? center - WorldPosFromDepth(uv - vec2(texel.x, 0.0), dl) : WorldPosFromDepth(uv + vec2(texel.x, 0.0), dr) - center;
 
     vec3 ddy = (abs(db - dc) < abs(dt - dc))
-        ? center - WorldPosFromDepth(uv - vec2(0.0, texel.y), db)
-        : WorldPosFromDepth(uv + vec2(0.0, texel.y), dt) - center;
+        ? center - WorldPosFromDepth(uv - vec2(0.0, texel.y), db) : WorldPosFromDepth(uv + vec2(0.0, texel.y), dt) - center;
 
     return normalize(cross(ddx, ddy));
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  Screen-Space Ambient Occlusion (Vogel Disk — noise-free)
-// ═══════════════════════════════════════════════════════════════════
-
-const int   SSAO_SAMPLES = 24;
-const float GOLDEN_ANGLE  = 2.3998277; // π(3 − √5)
-
-// Generate a Vogel disk sample: deterministic, well-distributed spiral
-vec2 VogelDiskSample(int index, int count, float phi) {
-    float r     = sqrt((float(index) + 0.5) / float(count));
-    float theta = float(index) * GOLDEN_ANGLE + phi;
-    return vec2(cos(theta), sin(theta)) * r;
+//  Screen Edge Fade (SSAO Halo Fix)
+float GetScreenEdgeFade(vec2 uv) {
+    vec2 edge = smoothstep(vec2(0.0), vec2(0.05), uv) * (1.0 - smoothstep(vec2(0.95), vec2(1.0), uv));
+    return edge.x * edge.y;
 }
 
-float ComputeSSAO(vec2 uv, float linearDepth) {
-    // Skip sky / far plane
-    if (linearDepth >= u_Far * 0.99) return 1.0;
-
-    // Scale sample radius by inverse depth so it stays
-    // perceptually consistent at different distances.
-    float radius = u_SSAORadius / linearDepth;
-
-    // Fixed rotation per 2×2 pixel block for subtle variation
-    // without the per-pixel noise that causes grain.
-    ivec2 px  = ivec2(gl_FragCoord.xy) % 4;
-    float phi = float(px.x + px.y * 4) * GOLDEN_ANGLE;
-
-    float occlusion = 0.0;
-
-    for (int i = 0; i < SSAO_SAMPLES; i++) {
-        vec2  offset    = VogelDiskSample(i, SSAO_SAMPLES, phi) * radius;
-        vec2  sampleUV  = clamp(uv + offset, vec2(0.0), vec2(1.0));
-        float sampleLin = LinearizeDepth(texture(u_DepthTexture, sampleUV).r);
-
-        // How much closer is the sample than the center?
-        float delta = linearDepth - sampleLin;
-
-        // Only occlude if sample is in front (closer) and within a reasonable range
-        float rangeCheck = smoothstep(0.0, 1.0, u_SSAORadius / (abs(delta) + 0.0001));
-        occlusion += smoothstep(0.0, u_SSAOBias * 4.0, delta) * rangeCheck;
-    }
-
-    return clamp(1.0 - (occlusion / float(SSAO_SAMPLES)) * u_SSAOIntensity, 0.0, 1.0);
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  Exponential Fog
-// ═══════════════════════════════════════════════════════════════════
-
+//  Exponential Squared Fog
 vec3 ApplyFog(vec3 color, float linearDepth) {
-    float fogFactor = 1.0 - exp(-u_FogDensity * linearDepth);
-    return mix(color, u_FogColor, clamp(fogFactor, 0.0, 1.0));
+    float fogFactor = exp(-pow(u_FogDensity * linearDepth, 2.0));
+    fogFactor = clamp(fogFactor, 0.0, 1.0);
+    return mix(u_FogColor, color, fogFactor);
 }
 
-// ═══════════════════════════════════════════════════════════════════
 //  ACES Filmic Tone Mapping
-// ═══════════════════════════════════════════════════════════════════
-
 vec3 ACESFilm(vec3 x) {
     float a = 2.51;
     float b = 0.03;
@@ -150,91 +99,85 @@ vec3 ACESFilm(vec3 x) {
     return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  Color Grading
-// ═══════════════════════════════════════════════════════════════════
-
+//  Color Grading (Post-Tonemap)
 vec3 ApplyColorGrading(vec3 color) {
-    // Exposure
-    color *= u_Exposure;
-
-    // Contrast (pivot around mid-gray 0.18)
-    color = mix(vec3(0.18), color, u_Contrast);
-
-    // Brightness (additive)
+    color = mix(vec3(0.5), color, u_Contrast);
     color += vec3(u_Brightness);
-
-    // Saturation
     float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
     color = mix(vec3(luma), color, u_Saturation);
-
-    return color;
+    return max(color, vec3(0.0));
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  Vignette
-// ═══════════════════════════════════════════════════════════════════
-
+//  Cinematic Vignette
 vec3 ApplyVignette(vec3 color, vec2 uv) {
-    vec2  center = uv - 0.5;
-    float dist   = dot(center, center);
-    float vignette = 1.0 - dist * u_VignetteIntensity * 2.0;
+    uv = uv * 2.0 - 1.0;
+    float dist = dot(uv, uv);
+    float vignette = smoothstep(0.8, u_VignetteIntensity * 0.799, dist);
     return color * clamp(vignette, 0.0, 1.0);
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  Main
-// ═══════════════════════════════════════════════════════════════════
+//  Dithering (Banding / Şeritlenme Önleyici)
+vec3 ApplyDithering(vec3 color, vec2 uv) {
+    float dither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) / 255.0;
+    return color + dither;
+}
 
+//  Main
 void main() {
-    float rawDepth   = texture(u_DepthTexture, v_TexCoords).r;
+    float rawDepth = texture(u_DepthTexture, v_TexCoords).r;
     float linearDepth = LinearizeDepth(rawDepth);
 
-    // ── Debug visualization modes ───────────────────────────────
-#if DEBUG_MODE == 1
-    // Depth: remap to [0, 1] for visualization
+    #if DEBUG_MODE == 1
     float d = linearDepth / u_Far;
     FragColor = vec4(vec3(d), 1.0);
-#elif DEBUG_MODE == 2
-    // Normals: remap [-1,1] to [0,1] for visualization
+    #elif DEBUG_MODE == 2
     vec3 n = ReconstructNormal(v_TexCoords) * 0.5 + 0.5;
     FragColor = vec4(n, 1.0);
-#elif DEBUG_MODE == 3
-    // SSAO only
-    float ao = ComputeSSAO(v_TexCoords, linearDepth);
+    #elif DEBUG_MODE == 3
+    float ao = texture(u_SSAOTexture, v_TexCoords).r;
     FragColor = vec4(vec3(ao), 1.0);
-#else
+    #else
 
-    // ── Normal rendering pipeline ───────────────────────────────
     vec3 color = texture(u_ScreenTexture, v_TexCoords).rgb;
 
-    // 1. SSAO
+    color *= u_Exposure;
+
     if (u_SSAOEnabled) {
-        float ao = ComputeSSAO(v_TexCoords, linearDepth);
-        color *= ao;
+        float ao = texture(u_SSAOTexture, v_TexCoords).r;
+
+        ao = clamp(ao, 0.0, 1.0);
+
+        float mask = GetScreenEdgeFade(v_TexCoords);
+
+        float ao_final = 1.0 - ((1.0 - ao) * mask);
+
+        color *= ao_final;
     }
 
-    // 2. Fog
+    // 3. Fog
     if (u_FogEnabled) {
         color = ApplyFog(color, linearDepth);
     }
 
-    // 3. Color grading (exposure, contrast, brightness, saturation)
-    color = ApplyColorGrading(color);
-
-    // 4. Tone mapping (HDR → LDR)
+    // 4. Tone Mapping
     if (u_ToneMappingEnabled) {
         color = ACESFilm(color);
     }
 
-    // 5. Gamma correction (linear → sRGB)
-    color = pow(color, vec3(1.0 / 2.2));
+    // 5. Color Grading
+    color = ApplyColorGrading(color);
 
-    // 6. Vignette (applied after gamma for perceptual correctness)
+    // 6. Vignette
     if (u_VignetteEnabled) {
         color = ApplyVignette(color, v_TexCoords);
     }
 
+    // 7. Gamma Correction
+    color = pow(max(color, vec3(0.0)), vec3(1.0 / 2.2));
+
+    // 8. Dithering
+    color = ApplyDithering(color, v_TexCoords);
+
     FragColor = vec4(color, 1.0);
-#endif
+    #endif
 }

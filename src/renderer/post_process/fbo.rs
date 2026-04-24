@@ -176,3 +176,123 @@ impl FrameBuffer {
         }
     }
 }
+
+pub struct RenderTarget {
+    pub fbo: glow::Framebuffer,
+    pub color_texture: glow::Texture,
+    pub width: i32,
+    pub height: i32,
+}
+
+impl RenderTarget {
+    pub fn new(
+        gl: &Context,
+        width: i32,
+        height: i32,
+        internal_format: i32,
+        format: u32,
+        data_type: u32,
+    ) -> Self {
+        unsafe {
+            let fbo = gl
+                .create_framebuffer()
+                .expect("Failed to create RenderTarget FBO");
+            gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
+
+            let color_texture = gl
+                .create_texture()
+                .expect("Failed to create RenderTarget texture");
+            gl.bind_texture(glow::TEXTURE_2D, Some(color_texture));
+            gl.tex_image_2d(
+                glow::TEXTURE_2D,
+                0,
+                internal_format,
+                width,
+                height,
+                0,
+                format,
+                data_type,
+                PixelUnpackData::Slice(None),
+            );
+            gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_MIN_FILTER,
+                glow::LINEAR as i32,
+            );
+            gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_MAG_FILTER,
+                glow::LINEAR as i32,
+            );
+            gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_WRAP_S,
+                glow::CLAMP_TO_EDGE as i32,
+            );
+            gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_WRAP_T,
+                glow::CLAMP_TO_EDGE as i32,
+            );
+
+            gl.framebuffer_texture_2d(
+                glow::FRAMEBUFFER,
+                glow::COLOR_ATTACHMENT0,
+                glow::TEXTURE_2D,
+                Some(color_texture),
+                0,
+            );
+
+            if gl.check_framebuffer_status(glow::FRAMEBUFFER) != glow::FRAMEBUFFER_COMPLETE {
+                panic!("RenderTarget Framebuffer is not complete!");
+            }
+
+            gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+
+            Self {
+                fbo,
+                color_texture,
+                width,
+                height,
+            }
+        }
+    }
+
+    pub fn resize(
+        &mut self,
+        gl: &Context,
+        width: i32,
+        height: i32,
+        internal_format: i32,
+        format: u32,
+        data_type: u32,
+    ) {
+        if self.width == width && self.height == height {
+            return;
+        }
+        self.width = width;
+        self.height = height;
+
+        unsafe {
+            gl.bind_texture(glow::TEXTURE_2D, Some(self.color_texture));
+            gl.tex_image_2d(
+                glow::TEXTURE_2D,
+                0,
+                internal_format,
+                width,
+                height,
+                0,
+                format,
+                data_type,
+                PixelUnpackData::Slice(None),
+            );
+        }
+    }
+
+    pub fn delete(&self, gl: &Context) {
+        unsafe {
+            gl.delete_framebuffer(self.fbo);
+            gl.delete_texture(self.color_texture);
+        }
+    }
+}

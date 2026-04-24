@@ -43,10 +43,10 @@ impl Default for PostProcessSettings {
             ssao_enabled: true,
             ssao_radius: 0.5,
             ssao_intensity: 1.0,
-            ssao_bias: 0.025,
+            ssao_bias: 0.015,
 
             fog_enabled: true,
-            fog_density: 0.008,
+            fog_density: 0.02,
             fog_color: [0.1, 0.1, 0.1],
 
             tone_mapping_enabled: true,
