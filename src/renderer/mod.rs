@@ -1,25 +1,26 @@
 pub mod buffer;
 pub mod color;
-
 pub mod draw_command;
-pub mod light;
+pub mod lights;
 pub mod material;
 pub mod pipeline;
 pub mod post_processing;
 pub mod shader;
 pub mod texture;
 
-use self::color::Color;
-use self::draw_command::DrawCommand;
-use self::light::SceneLights;
-use self::material::{Material, MaterialId};
-use crate::camera::Camera;
-use crate::error::EngineError;
-use crate::mesh::{Instance, Mesh, MeshType};
+use self::lights::{DirectionalLight, PointLight, SceneLights};
+use crate::{
+    camera::Camera,
+    error::KerkenezError,
+    mesh::{AABB, Instance, Mesh, MeshType},
+};
+pub use color::Color;
+pub use draw_command::DrawCommand;
 use glow::{Context, HasContext};
-use std::collections::HashMap;
-use std::rc::Rc;
-use texture::{Texture, TextureId};
+pub use material::{Material, MaterialId};
+use std::{collections::HashMap, rc::Rc};
+pub use texture::{Texture, TextureId};
+
 pub struct MeshBatch {
     gl: Rc<Context>,
     vao: glow::VertexArray,
@@ -27,7 +28,18 @@ pub struct MeshBatch {
     ebo: glow::Buffer,
     instance_buffer: glow::Buffer,
     indices_count: i32,
-    local_aabb: crate::mesh::primitives::AABB,
+    local_aabb: AABB,
+}
+
+impl Drop for MeshBatch {
+    fn drop(&mut self) {
+        unsafe {
+            self.gl.delete_vertex_array(self.vao);
+            self.gl.delete_buffer(self.vbo);
+            self.gl.delete_buffer(self.ebo);
+            self.gl.delete_buffer(self.instance_buffer);
+        }
+    }
 }
 
 pub struct MainUniforms {
@@ -48,20 +60,6 @@ impl MainUniforms {
     }
 }
 
-impl Drop for MeshBatch {
-    fn drop(&mut self) {
-        unsafe {
-            self.gl.delete_vertex_array(self.vao);
-            self.gl.delete_buffer(self.vbo);
-            self.gl.delete_buffer(self.ebo);
-            self.gl.delete_buffer(self.instance_buffer);
-        }
-    }
-}
-
-// GL State Cache
-/// Tracks the currently bound OpenGL objects to avoid redundant
-/// state changes (state thrashing).
 struct GlStateCache {
     current_vao: Option<glow::VertexArray>,
     current_program: Option<glow::Program>,
@@ -124,30 +122,12 @@ pub struct Renderer {
     render_queue: Vec<DrawCommand>,
 }
 
-impl Drop for Renderer {
-    fn drop(&mut self) {
-        unsafe {
-            self.gl.delete_program(self.program);
-        }
-    }
-}
-
-/// Grouping shared resources to satisfy Clippy's argument count limit
-struct DrawResources<'a> {
-    gl: &'a glow::Context,
-    batches: &'a HashMap<MeshType, MeshBatch>,
-    materials: &'a HashMap<MaterialId, Material>,
-    textures: &'a [Texture],
-    uniforms: &'a MainUniforms,
-    state_cache: &'a mut GlStateCache,
-}
-
 impl Renderer {
-    pub fn new(gl: Rc<Context>, width: u32, height: u32) -> Result<Self, EngineError> {
+    pub fn new(gl: Rc<Context>, width: u32, height: u32) -> Result<Self, KerkenezError> {
         let program = unsafe {
             let program = gl
                 .create_program()
-                .map_err(EngineError::ResourceCreationError)?;
+                .map_err(KerkenezError::ResourceCreationError)?;
             let vert_src = include_str!("../../shaders/geometry.vert");
             let frag_src = include_str!("../../shaders/geometry.frag");
             shader::create_shaders(&gl, program, vert_src, frag_src)?;
@@ -244,15 +224,15 @@ impl Renderer {
         self.post_processing.settings.fog_density = density;
     }
 
-    pub fn set_directional_light(&mut self, light: crate::renderer::light::DirectionalLight) {
+    pub fn set_directional_light(&mut self, light: DirectionalLight) {
         self.lights.directional = Some(light);
     }
 
-    pub fn add_light(&mut self, light: crate::renderer::light::PointLight) {
+    pub fn add_light(&mut self, light: PointLight) {
         self.lights.point_lights.push(light);
     }
 
-    fn register_mesh(&mut self, mesh_type: MeshType, mesh: &Mesh) -> Result<(), EngineError> {
+    fn register_mesh(&mut self, mesh_type: MeshType, mesh: &Mesh) -> Result<(), KerkenezError> {
         let (vao, vbo, ebo) = buffer::setup_mesh_buffers(&self.gl, mesh)?;
         unsafe {
             self.gl.bind_vertex_array(Some(vao));
@@ -270,7 +250,7 @@ impl Renderer {
                     ebo,
                     instance_buffer,
                     indices_count: mesh.indices.len() as i32,
-                    local_aabb: crate::mesh::primitives::AABB {
+                    local_aabb: AABB {
                         min: mesh.bounding_box.min,
                         max: mesh.bounding_box.max,
                     },
@@ -362,7 +342,7 @@ impl Renderer {
                 * glam::Mat4::from_scale(cmd.scale);
 
             // Frustum Culling
-            let world_aabb = mesh_batch.local_aabb.transform(&model_matrix);
+            let world_aabb = mesh_batch.local_aabb.transfrom(&model_matrix);
             if !frustum.contains_aabb(&world_aabb) {
                 continue;
             }
@@ -433,4 +413,21 @@ impl Renderer {
                 .resize(&self.gl, width as i32, height as i32);
         }
     }
+}
+
+impl Drop for Renderer {
+    fn drop(&mut self) {
+        unsafe {
+            self.gl.delete_program(self.program);
+        }
+    }
+}
+
+struct DrawResources<'a> {
+    gl: &'a glow::Context,
+    batches: &'a HashMap<MeshType, MeshBatch>,
+    materials: &'a HashMap<MaterialId, Material>,
+    textures: &'a [Texture],
+    uniforms: &'a MainUniforms,
+    state_cache: &'a mut GlStateCache,
 }

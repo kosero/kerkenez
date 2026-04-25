@@ -5,7 +5,7 @@ pub enum DebugMode {
     None = 0,
     Depth = 1,
     Normals = 2,
-    SSAO = 3,
+    Ssao = 3,
 }
 
 #[derive(Debug, Clone)]

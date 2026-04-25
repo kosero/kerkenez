@@ -1,5 +1,3 @@
-use glam::Mat4;
-
 pub struct OrthographicProjection {
     pub left: f32,
     pub right: f32,
@@ -21,8 +19,8 @@ impl OrthographicProjection {
         }
     }
 
-    pub fn projection_matrix(&self) -> Mat4 {
-        Mat4::orthographic_rh_gl(
+    pub fn projection_matrix(&self) -> glam::Mat4 {
+        glam::Mat4::orthographic_rh_gl(
             self.left,
             self.right,
             self.bottom,

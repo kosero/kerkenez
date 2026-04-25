@@ -1,12 +1,15 @@
-pub mod fullscreen_pass;
-pub mod render_target;
-pub mod settings;
+mod fullscreen_pass;
+mod gbuffer;
+mod render_target;
+mod settings;
 
 use self::fullscreen_pass::FullscreenPass;
-use self::render_target::{GBuffer, RenderTarget};
+use self::gbuffer::GBuffer;
+use self::render_target::RenderTarget;
 use self::settings::PostProcessingSettings;
-use crate::error::EngineError;
-use crate::renderer::light::{MAX_POINT_LIGHTS, SceneLights};
+use crate::camera::CameraProjection;
+use crate::error::KerkenezError;
+use crate::renderer::lights::{MAX_POINT_LIGHTS, SceneLights};
 use crate::renderer::shader;
 use glow::{Context, HasContext};
 use std::collections::HashMap;
@@ -214,7 +217,7 @@ impl Drop for PostProcessingManager {
 }
 
 impl PostProcessingManager {
-    pub fn new(gl: &Rc<Context>, width: u32, height: u32) -> Result<Self, EngineError> {
+    pub fn new(gl: &Rc<Context>, width: u32, height: u32) -> Result<Self, KerkenezError> {
         let fbo = GBuffer::new(gl, width, height)?;
         // SSAO at half resolution for performance
         let half_w = (width / 2).max(1);
@@ -258,12 +261,12 @@ impl PostProcessingManager {
         let (ssao_program, ssao_blur_program) = unsafe {
             let sp = gl
                 .create_program()
-                .map_err(EngineError::ResourceCreationError)?;
+                .map_err(KerkenezError::ResourceCreationError)?;
             shader::create_shaders(gl, sp, vert_src, &ssao_frag_final)?;
 
             let sbp = gl
                 .create_program()
-                .map_err(EngineError::ResourceCreationError)?;
+                .map_err(KerkenezError::ResourceCreationError)?;
             shader::create_shaders(gl, sbp, vert_src, &ssao_blur_frag_final)?;
 
             (sp, sbp)
@@ -306,7 +309,7 @@ impl PostProcessingManager {
         }
     }
 
-    fn get_variant(&mut self, gl: &Context) -> Result<&ProgramVariant, EngineError> {
+    fn get_variant(&mut self, gl: &Context) -> Result<&ProgramVariant, KerkenezError> {
         let defines = ShaderDefines::from_settings(&self.settings);
 
         if let std::collections::hash_map::Entry::Vacant(e) = self.variants.entry(defines) {
@@ -338,7 +341,7 @@ impl PostProcessingManager {
             unsafe {
                 let program = gl
                     .create_program()
-                    .map_err(EngineError::ResourceCreationError)?;
+                    .map_err(KerkenezError::ResourceCreationError)?;
                 shader::create_shaders(gl, program, vert_src, &frag_src_modified)?;
                 let uniforms = UniformCache::new(gl, program);
                 e.insert(ProgramVariant { program, uniforms });
@@ -362,8 +365,8 @@ impl PostProcessingManager {
             self.fbo.unbind(gl);
 
             let (near, far) = match camera.projection() {
-                crate::camera::CameraProjection::Perspective(p) => (p.near, p.far),
-                crate::camera::CameraProjection::Orthographic(o) => (o.near, o.far),
+                CameraProjection::Perspective(p) => (p.near, p.far),
+                CameraProjection::Orthographic(o) => (o.near, o.far),
             };
             let inv_vp = camera.inv_view_projection_matrix();
             let camera_pos = camera.position();
@@ -629,7 +632,6 @@ impl PostProcessingManager {
         let half_w = (width / 2).max(1);
         let half_h = (height / 2).max(1);
         self.ssao_target.resize(
-            gl,
             half_w,
             half_h,
             glow::R16F as i32,
@@ -637,7 +639,6 @@ impl PostProcessingManager {
             glow::HALF_FLOAT,
         );
         self.ssao_blur_target.resize(
-            gl,
             half_w,
             half_h,
             glow::R16F as i32,

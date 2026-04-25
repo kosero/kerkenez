@@ -1,13 +1,17 @@
-use crate::mesh::MeshType;
-use crate::renderer::color::Color;
+use glam::{Quat, Vec3};
+
+use crate::{
+    mesh::MeshType,
+    renderer::{color::Color, material::MaterialId},
+};
 
 #[derive(Clone)]
 pub struct DrawCommand {
     pub mesh_type: MeshType,
-    pub material: crate::renderer::material::MaterialId,
-    pub position: glam::Vec3,
-    pub scale: glam::Vec3,
-    pub rotation: glam::Quat,
+    pub material: MaterialId,
+    pub position: Vec3,
+    pub scale: Vec3,
+    pub rotation: Quat,
     pub tint: Color,
 }
 
@@ -15,10 +19,10 @@ impl DrawCommand {
     pub fn new(mesh_type: MeshType) -> Self {
         Self {
             mesh_type,
-            material: crate::renderer::material::MaterialId::new(0),
-            position: glam::Vec3::ZERO,
-            scale: glam::Vec3::ONE,
-            rotation: glam::Quat::IDENTITY,
+            material: MaterialId::new(0),
+            position: Vec3::ZERO,
+            scale: Vec3::ONE,
+            rotation: Quat::IDENTITY,
             tint: Color::WHITE,
         }
     }

@@ -1,4 +1,4 @@
-use crate::error::EngineError;
+use crate::error::KerkenezError;
 use glow::{Context, HasContext, NativeTexture};
 use std::rc::Rc;
 
@@ -34,7 +34,7 @@ impl Texture {
     pub fn load(gl: &Rc<Context>, path: &str) -> Self {
         match image::open(path) {
             Ok(img) => {
-                let img = img.flipv().into_rgba8();
+                let img = img.flipv().into_rgb8();
                 let (width, height) = img.dimensions();
                 let pixels = img.into_raw();
                 Self::from_pixels(gl, width, height, &pixels).unwrap_or_else(|_| {
@@ -74,11 +74,11 @@ impl Texture {
         width: u32,
         height: u32,
         pixels: &[u8],
-    ) -> Result<Self, EngineError> {
+    ) -> Result<Self, KerkenezError> {
         let id = unsafe {
             let texture = gl
                 .create_texture()
-                .map_err(EngineError::ResourceCreationError)?;
+                .map_err(KerkenezError::ResourceCreationError)?;
             gl.bind_texture(glow::TEXTURE_2D, Some(texture));
             gl.tex_image_2d(
                 glow::TEXTURE_2D,
@@ -115,7 +115,7 @@ impl Texture {
         })
     }
 
-    /// Bind this texture to the given texture unit using a pre-cached uniform location.
+    /// Bind this texture to the given texture unit using a pre-cached uniform location
     pub fn bind_at(&self, gl: &glow::Context, location: Option<&glow::UniformLocation>, unit: u32) {
         unsafe {
             gl.active_texture(glow::TEXTURE0 + unit);
@@ -126,7 +126,7 @@ impl Texture {
         }
     }
 
-    /// Bind this texture to the given texture unit and set the sampler uniform (legacy lookup).
+    /// Bind this texture to the given texture unit and set the sampler uniform (legacy lookup)
     pub fn bind(&self, gl: &Context, program: glow::NativeProgram, unit: u32) {
         unsafe {
             gl.active_texture(glow::TEXTURE0 + unit);

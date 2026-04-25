@@ -1,4 +1,4 @@
-use crate::error::EngineError;
+use crate::error::KerkenezError;
 use glow::{Context, HasContext, Program};
 
 pub fn create_shaders(
@@ -6,7 +6,7 @@ pub fn create_shaders(
     program: Program,
     vert_src: &str,
     frag_src: &str,
-) -> Result<(), EngineError> {
+) -> Result<(), KerkenezError> {
     let shader_srcs = [
         (glow::VERTEX_SHADER, vert_src),
         (glow::FRAGMENT_SHADER, frag_src),
@@ -18,7 +18,7 @@ pub fn create_shaders(
         for (shader_type, src) in &shader_srcs {
             let shader = gl
                 .create_shader(*shader_type)
-                .map_err(EngineError::ResourceCreationError)?;
+                .map_err(KerkenezError::ResourceCreationError)?;
             gl.shader_source(shader, src);
             gl.compile_shader(shader);
             if !gl.get_shader_compile_status(shader) {
@@ -29,7 +29,7 @@ pub fn create_shaders(
                     gl.delete_shader(*s);
                 }
                 gl.delete_shader(shader);
-                return Err(EngineError::ShaderCompileError(info));
+                return Err(KerkenezError::ShaderCompileError(info));
             }
             gl.attach_shader(program, shader);
             shaders.push(shader);
@@ -43,7 +43,7 @@ pub fn create_shaders(
                 gl.detach_shader(program, s);
                 gl.delete_shader(s);
             }
-            return Err(EngineError::ShaderLinkError(info));
+            return Err(KerkenezError::ShaderLinkError(info));
         }
 
         for shader in shaders {

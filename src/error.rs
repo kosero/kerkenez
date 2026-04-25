@@ -1,5 +1,5 @@
 #[derive(Debug)]
-pub enum EngineError {
+pub enum KerkenezError {
     ShaderCompileError(String),
     ShaderLinkError(String),
     TextureLoadError(String),
@@ -7,18 +7,20 @@ pub enum EngineError {
     ResourceCreationError(String),
 }
 
-impl std::fmt::Display for EngineError {
+impl std::fmt::Display for KerkenezError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            EngineError::ShaderCompileError(msg) => write!(f, "Shader Compile Error: {}", msg),
-            EngineError::ShaderLinkError(msg) => write!(f, "Shader Link Error: {}", msg),
-            EngineError::TextureLoadError(msg) => write!(f, "Texture Load Error: {}", msg),
-            EngineError::FramebufferIncomplete(msg) => write!(f, "Framebuffer Incomplete: {}", msg),
-            EngineError::ResourceCreationError(msg) => {
+            KerkenezError::ShaderCompileError(msg) => write!(f, "Shader Compile Error: {}", msg),
+            KerkenezError::ShaderLinkError(msg) => write!(f, "Shader Link Error: {}", msg),
+            KerkenezError::TextureLoadError(msg) => write!(f, "Texture Load Error: {}", msg),
+            KerkenezError::FramebufferIncomplete(msg) => {
+                write!(f, "Framebuffer Incomplet: {}", msg)
+            }
+            KerkenezError::ResourceCreationError(msg) => {
                 write!(f, "Resource Creation Error: {}", msg)
             }
         }
     }
 }
 
-impl std::error::Error for EngineError {}
+impl std::error::Error for KerkenezError {}

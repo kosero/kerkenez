@@ -1,9 +1,6 @@
-use bytemuck::{Pod, Zeroable};
-use glam::{Mat4, Vec4};
-
 #[repr(C)]
-#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Instance {
-    pub model_matrix: Mat4,
-    pub tint: Vec4,
+    pub model_matrix: glam::Mat4,
+    pub tint: glam::Vec4,
 }

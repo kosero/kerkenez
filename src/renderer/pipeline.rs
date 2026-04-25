@@ -5,16 +5,16 @@ pub fn setup_pipeline(gl: &Context) {
     unsafe {
         let stride = std::mem::size_of::<Vertex>() as i32;
 
-        // location 0: position (vec3)
-        gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, stride, 0);
+        // location 0: position
+        gl.vertex_attrib_pointer_f32(0, 4, glow::FLOAT, false, stride, 0);
         gl.enable_vertex_attrib_array(0);
 
-        // location 1: tex_coords (vec2)
-        gl.vertex_attrib_pointer_f32(1, 2, glow::FLOAT, false, stride, 12);
+        // location 1: tex_coords
+        gl.vertex_attrib_pointer_f32(1, 4, glow::FLOAT, false, stride, 16);
         gl.enable_vertex_attrib_array(1);
 
-        // location 7: normal (vec3) — G-Buffer
-        gl.vertex_attrib_pointer_f32(7, 3, glow::FLOAT, false, stride, 20);
+        // location 7: normal
+        gl.vertex_attrib_pointer_f32(7, 4, glow::FLOAT, false, stride, 32);
         gl.enable_vertex_attrib_array(7);
 
         gl.clear_color(0.1, 0.1, 0.1, 1.0);

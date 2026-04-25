@@ -9,22 +9,18 @@ pub struct Color {
 }
 
 impl Color {
-    /// Create color from normalized RGB [0.0, 1.0]
     pub const fn rgb(r: f32, g: f32, b: f32) -> Self {
         Self { r, g, b, a: 1.0 }
     }
 
-    /// Create color from normalized RGBA [0.0, 1.0]
     pub const fn rgba(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
     }
 
-    /// Create color from 8-bit RGB [0, 255]
     pub fn rgb8(r: u8, g: u8, b: u8) -> Self {
         Self::rgba8(r, g, b, 255)
     }
 
-    /// Create color from 8-bit RGBA [0, 255]
     pub fn rgba8(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self {
             r: r as f32 / 255.0,
@@ -34,7 +30,6 @@ impl Color {
         }
     }
 
-    /// Create color from Hex string (e.g. "#FF0000" or "FF0000")
     pub fn hex(hex: &str) -> Self {
         let hex = hex.trim_start_matches('#');
         if hex.len() == 6 {
@@ -53,8 +48,6 @@ impl Color {
         }
     }
 
-    /// Convert sRGB color to Linear color space.
-    /// Essential for physically-based rendering when using constant colors.
     pub fn to_linear(&self) -> Self {
         fn decode(c: f32) -> f32 {
             if c <= 0.04045 {
@@ -67,7 +60,7 @@ impl Color {
             r: decode(self.r),
             g: decode(self.g),
             b: decode(self.b),
-            a: self.a, // Alpha is usually linear
+            a: self.a,
         }
     }
 

@@ -1,5 +1,3 @@
-use glam::Mat4;
-
 pub struct PerspectiveProjection {
     pub fov: f32,
     pub aspect_ratio: f32,
@@ -17,8 +15,8 @@ impl PerspectiveProjection {
         }
     }
 
-    pub fn projection_matrix(&self) -> Mat4 {
-        Mat4::perspective_rh_gl(
+    pub fn projection_matrix(&self) -> glam::Mat4 {
+        glam::Mat4::perspective_rh_gl(
             self.fov.to_radians(),
             self.aspect_ratio,
             self.near,
