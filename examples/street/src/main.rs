@@ -427,6 +427,8 @@ impl ApplicationHandler for StreetApp {
                 //         .rotate(0.0, y_cord, 0.0),
                 // );
 
+                renderer.draw(DrawCommand::sphere().at(0.0, 0.0, -8.0).scale(1.0));
+
                 renderer.end_drawing(time);
 
                 gl_surface.swap_buffers(gl_context).unwrap();

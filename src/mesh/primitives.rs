@@ -206,6 +206,54 @@ impl Mesh {
 
         Self::new(vertices, indices)
     }
+
+    pub fn sphere(radius: f32, sectors: u32, stacks: u32) -> Self {
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+
+        for i in 0..=stacks {
+            let stack_angle =
+                std::f32::consts::PI / 2.0 - i as f32 * (std::f32::consts::PI / stacks as f32);
+            let xy = radius * stack_angle.cos();
+            let z = radius * stack_angle.sin();
+
+            for j in 0..=sectors {
+                let sector_angle = j as f32 * (2.0 * std::f32::consts::PI / sectors as f32);
+
+                let x = xy * sector_angle.cos();
+                let y = xy * sector_angle.sin();
+
+                vertices.push(Vertex {
+                    position: [x, y, z, 1.0], // W değerini 1.0 yapalım
+                    tex_coords: [
+                        j as f32 / sectors as f32,
+                        i as f32 / stacks as f32,
+                        0.0,
+                        0.0,
+                    ],
+                    normal: [x / radius, y / radius, z / radius, 0.0],
+                });
+            }
+        }
+
+        for i in 0..stacks {
+            for j in 0..sectors {
+                let first = i * (sectors + 1) + j;
+                let second = first + sectors + 1;
+
+                // İki üçgen (quad)
+                indices.push(first);
+                indices.push(second);
+                indices.push(first + 1);
+
+                indices.push(second);
+                indices.push(second + 1);
+                indices.push(first + 1);
+            }
+        }
+
+        Self::new(vertices, indices)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -213,4 +261,17 @@ pub enum MeshType {
     Square,
     Triangle,
     Cube,
+    Sphere { sectors: u32, stacks: u32 },
+}
+
+impl MeshType {
+    pub const DEFAULT_SPHERE_SECTORS: u32 = 12;
+    pub const DEFAULT_SPHERE_STACKS: u32 = 6;
+
+    pub fn default_sphere() -> Self {
+        Self::Sphere {
+            sectors: Self::DEFAULT_SPHERE_SECTORS,
+            stacks: Self::DEFAULT_SPHERE_STACKS,
+        }
+    }
 }

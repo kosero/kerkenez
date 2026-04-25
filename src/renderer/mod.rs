@@ -170,6 +170,11 @@ impl Renderer {
         state.register_mesh(MeshType::Triangle, &Mesh::triangle())?;
         state.register_mesh(MeshType::Cube, &Mesh::cube())?;
 
+        let default_sphere_type = MeshType::default_sphere();
+        if let MeshType::Sphere { sectors, stacks } = default_sphere_type {
+            state.register_mesh(default_sphere_type, &Mesh::sphere(1.0, sectors, stacks))?;
+        }
+
         // Register default material
         state.register_material(
             MaterialId::new(0),

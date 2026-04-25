@@ -39,6 +39,17 @@ impl DrawCommand {
         Self::new(MeshType::Cube)
     }
 
+    pub fn sphere() -> Self {
+        Self::new(MeshType::default_sphere())
+    }
+
+    pub fn resolution(mut self, sectors: u32, stacks: u32) -> Self {
+        if let MeshType::Sphere { .. } = self.mesh_type {
+            self.mesh_type = MeshType::Sphere { sectors, stacks };
+        }
+        self
+    }
+
     pub fn material(mut self, id: crate::renderer::material::MaterialId) -> Self {
         self.material = id;
         self
