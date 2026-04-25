@@ -1,6 +1,6 @@
 pub mod buffer;
 pub mod color;
-pub mod context;
+
 pub mod draw_command;
 pub mod light;
 pub mod material;
@@ -17,15 +17,9 @@ use crate::camera::Camera;
 use crate::error::EngineError;
 use crate::mesh::{Instance, Mesh, MeshType};
 use glow::{Context, HasContext};
-use glutin::context::PossiblyCurrentContext;
-use glutin::prelude::GlSurface;
-use glutin::surface::{Surface, WindowSurface};
 use std::collections::HashMap;
-use std::num::NonZeroU32;
 use std::rc::Rc;
 use texture::{Texture, TextureId};
-use winit::event_loop::ActiveEventLoop;
-use winit::window::Window;
 pub struct MeshBatch {
     gl: Rc<Context>,
     vao: glow::VertexArray,
@@ -108,15 +102,8 @@ impl GlStateCache {
     }
 }
 
-pub struct GraphicsContext {
-    pub gl_surface: Surface<WindowSurface>,
-    pub gl_context: PossiblyCurrentContext,
-    pub window: Window,
-}
-
-pub struct RenderState {
+pub struct Renderer {
     gl: Rc<Context>,
-    ctx: GraphicsContext,
     program: glow::Program,
     pub camera: Camera,
 
@@ -129,12 +116,15 @@ pub struct RenderState {
 
     state_cache: GlStateCache,
     pub post_processing: post_processing::PostProcessingManager,
+    pub lights: SceneLights,
+    next_material_id: usize,
     white_texture_id: TextureId,
     uniforms: MainUniforms,
     batch_buffer: HashMap<(MeshType, MaterialId), Vec<Instance>>,
+    render_queue: Vec<DrawCommand>,
 }
 
-impl Drop for RenderState {
+impl Drop for Renderer {
     fn drop(&mut self) {
         unsafe {
             self.gl.delete_program(self.program);
@@ -152,43 +142,25 @@ struct DrawResources<'a> {
     state_cache: &'a mut GlStateCache,
 }
 
-impl RenderState {
-    pub fn new(
-        event_loop: &ActiveEventLoop,
-        title: &str,
-        width: u32,
-        height: u32,
-        vert_src: &str,
-        frag_src: &str,
-    ) -> Result<Self, EngineError> {
-        let (gl, gl_surface, gl_context, window) =
-            context::init_context(event_loop, title, width, height);
-
+impl Renderer {
+    pub fn new(gl: Rc<Context>, width: u32, height: u32) -> Result<Self, EngineError> {
         let program = unsafe {
             let program = gl
                 .create_program()
                 .map_err(EngineError::ResourceCreationError)?;
+            let vert_src = include_str!("../../shaders/geometry.vert");
+            let frag_src = include_str!("../../shaders/geometry.frag");
             shader::create_shaders(&gl, program, vert_src, frag_src)?;
             gl.use_program(Some(program));
             program
         };
 
-        let physical_size = window.inner_size();
-        let post_processing = post_processing::PostProcessingManager::new(
-            &gl,
-            physical_size.width,
-            physical_size.height,
-        )?;
+        let post_processing = post_processing::PostProcessingManager::new(&gl, width, height)?;
 
         let uniforms = MainUniforms::new(&gl, program);
 
         let mut state = Self {
             gl,
-            ctx: GraphicsContext {
-                gl_surface,
-                gl_context,
-                window,
-            },
             program,
             camera: Camera::new_perspective(45.0, (width as f32) / (height as f32), 0.1, 1000.0),
             batches: HashMap::new(),
@@ -197,9 +169,12 @@ impl RenderState {
             texture_path_index: HashMap::new(),
             state_cache: GlStateCache::new(),
             post_processing,
+            lights: SceneLights::default(),
+            next_material_id: 1,
             white_texture_id: TextureId::new(0), // Placeholder
             uniforms,
             batch_buffer: HashMap::new(),
+            render_queue: Vec::new(),
         };
 
         // Create default white texture
@@ -246,6 +221,37 @@ impl RenderState {
         self.materials.insert(id, material);
     }
 
+    pub fn add_material(&mut self, material: Material) -> MaterialId {
+        let id = MaterialId::new(self.next_material_id);
+        self.next_material_id += 1;
+        self.register_material(id, material);
+        id
+    }
+
+    pub fn set_ambient_light(&mut self, r: f32, g: f32, b: f32, intensity: f32) {
+        self.lights.ambient_color = crate::renderer::color::Color::rgb(r, g, b).to_linear();
+        self.lights.ambient_intensity = intensity;
+    }
+
+    pub fn set_ambient_color(&mut self, color: crate::renderer::color::Color, intensity: f32) {
+        self.lights.ambient_color = color.to_linear();
+        self.lights.ambient_intensity = intensity;
+    }
+
+    pub fn set_fog(&mut self, color: crate::renderer::color::Color, density: f32) {
+        self.post_processing.settings.fog_enabled = true;
+        self.post_processing.settings.fog_color = color.to_linear();
+        self.post_processing.settings.fog_density = density;
+    }
+
+    pub fn set_directional_light(&mut self, light: crate::renderer::light::DirectionalLight) {
+        self.lights.directional = Some(light);
+    }
+
+    pub fn add_light(&mut self, light: crate::renderer::light::PointLight) {
+        self.lights.point_lights.push(light);
+    }
+
     fn register_mesh(&mut self, mesh_type: MeshType, mesh: &Mesh) -> Result<(), EngineError> {
         let (vao, vbo, ebo) = buffer::setup_mesh_buffers(&self.gl, mesh)?;
         unsafe {
@@ -274,27 +280,27 @@ impl RenderState {
         Ok(())
     }
 
-    pub fn render(&mut self, render_queue: &[DrawCommand], lights: &SceneLights, time: f32) {
-        let size = self.ctx.window.inner_size();
-        if size.width > 0
-            && size.height > 0
-            && (size.width != self.post_processing.width() as u32
-                || size.height != self.post_processing.height() as u32)
-        {
-            self.resize(size.width, size.height);
-        }
+    pub fn begin_drawing(&mut self) {
+        self.render_queue.clear();
 
         self.camera.update();
 
         unsafe {
             self.post_processing.begin(&self.gl);
-
-            // Post-process pass changes GL state — invalidate cache
             self.state_cache.invalidate();
-
             self.setup_frame();
+        }
+    }
 
-            self.prepare_batches(render_queue);
+    pub fn draw(&mut self, command: DrawCommand) {
+        self.render_queue.push(command);
+    }
+
+    pub fn end_drawing(&mut self, time: f32) {
+        unsafe {
+            let queue = std::mem::take(&mut self.render_queue);
+            self.prepare_batches(&queue);
+            self.render_queue = queue;
 
             let mut resources = DrawResources {
                 gl: &self.gl,
@@ -311,22 +317,12 @@ impl RenderState {
                 }
             }
 
-            // Post-process pass invalidates state
             self.state_cache.invalidate();
 
-            self.post_processing.end(
-                &self.gl,
-                size.width as i32,
-                size.height as i32,
-                &self.camera,
-                lights,
-                time,
-            );
-
-            self.ctx
-                .gl_surface
-                .swap_buffers(&self.ctx.gl_context)
-                .unwrap();
+            let width = self.post_processing.width();
+            let height = self.post_processing.height();
+            self.post_processing
+                .end(&self.gl, width, height, &self.camera, &self.lights, time);
         }
     }
 
@@ -428,8 +424,7 @@ impl RenderState {
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
-        if let (Some(w), Some(h)) = (NonZeroU32::new(width), NonZeroU32::new(height)) {
-            self.ctx.gl_surface.resize(&self.ctx.gl_context, w, h);
+        if width > 0 && height > 0 {
             unsafe {
                 self.gl.viewport(0, 0, width as i32, height as i32);
             }
@@ -437,9 +432,5 @@ impl RenderState {
             self.post_processing
                 .resize(&self.gl, width as i32, height as i32);
         }
-    }
-
-    pub fn request_redraw(&self) {
-        self.ctx.window.request_redraw();
     }
 }

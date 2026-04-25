@@ -1,6 +1,7 @@
 use crate::mesh::MeshType;
 use crate::renderer::color::Color;
 
+#[derive(Clone)]
 pub struct DrawCommand {
     pub mesh_type: MeshType,
     pub material: crate::renderer::material::MaterialId,

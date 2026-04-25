@@ -1,4 +1,3 @@
-pub mod app;
 pub mod camera;
 pub mod error;
 pub mod mesh;

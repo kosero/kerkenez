@@ -1,11 +1,10 @@
-pub use crate::app::App;
 pub use crate::mesh::{
     instance::Instance,
     primitives::{Mesh, MeshType},
     vertex::Vertex,
 };
 pub use crate::renderer::{
-    RenderState,
+    Renderer,
     color::Color,
     draw_command::DrawCommand,
     light::{DirectionalLight, PointLight, SceneLights},
